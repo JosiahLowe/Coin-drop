@@ -12,7 +12,7 @@
 <body>
 <main>
 <header><div><div class="label">POCKET ARCADE / 001</div><h1>COIN DROP<span>.</span></h1></div><div class="score"><span class="label">COLLECTED</span><output id="score" aria-label="Collected coins">0</output></div></header>
-<section class="machine" aria-label="Coin pusher machine"><div class="bar"><span>SIDE VIEW</span><span class="live">● IN PLAY</span></div><canvas id="game" width="460" height="540" aria-label="Animated coin pusher. Drop coins to push the pile over the right edge.">Use Drop Coin to play.</canvas></section>
+<section class="machine" aria-label="Coin pusher machine"><div class="bar"><span>TOP VIEW</span><span class="live">● IN PLAY</span></div><canvas id="game" width="460" height="540" aria-label="Top-down coin pusher. Drop coins to push the pile over the bottom collection edge.">Use Drop Coin to play.</canvas></section>
 <div class="controls"><button id="drop" type="button">＋ DROP COIN</button><button id="reset" type="button" aria-label="Reset game" title="Reset game">↺</button></div>
 <p class="hint">Time your drop. Push the pile. Collect the gold.<br>Every coin over the edge earns a point.</p>
 <footer><span>NO TOKENS REQUIRED</span><span>JUST ONE MORE DROP ↗</span></footer>
@@ -20,30 +20,35 @@
 <script>
 'use strict';
 const canvas=document.getElementById('game'),ctx=canvas.getContext('2d'),scoreElement=document.getElementById('score');
-const R=10,FLOOR=395,EDGE=355,STEP=1/120;
-let coins=[],score=0,time=0,pusherX=56,accumulator=0,lastTime=null,particles=[];
-const pusherAt=t=>88-32*Math.cos(t*1.55);
-function coin(x,y){return{x,y,vx:0,vy:0,angle:Math.random()*6.28};}
+const R=14,EDGE=445,LEFT=49,RIGHT=411,STEP=1/120;
+let coins=[],score=0,time=0,pusherY=130,accumulator=0,lastTime=null,particles=[];
+const pusherAt=t=>207-77*Math.cos(t*1.55);
+function coin(x,y){return{x,y,vx:0,vy:0,angle:Math.random()*6.28,lift:0,vz:0,falling:false};}
 function reset(){
  coins=[];
- for(let row=0;row<5;row++)for(let col=0;col<11;col++)coins.push(coin(130+col*20.1+(row%2)*5,FLOOR-R-row*20.1));
- score=0;time=0;pusherX=pusherAt(0);particles=[];accumulator=0;scoreElement.textContent='0';
+ for(let row=0;row<5;row++)for(let col=0;col<11;col++)coins.push(coin(72+col*31+(row%2)*5,290+row*31));
+ score=0;time=0;pusherY=pusherAt(0);particles=[];accumulator=0;scoreElement.textContent='0';
 }
 function drop(){
  // Bound simulation cost during sustained tapping.
  if(coins.length>=180)return;
- const c=coin(170+Math.random()*125,65);c.vx=(Math.random()-.5)*20;coins.push(c);
+ const c=coin(85+Math.random()*290,pusherY+R+24);c.lift=65;c.vx=(Math.random()-.5)*14;c.vy=12;coins.push(c);
 }
 function simulate(dt){
  time+=dt;
- const next=pusherAt(time),pusherVelocity=(next-pusherX)/dt;pusherX=next;
- for(const c of coins){c.vy+=680*dt;c.vx*=Math.exp(-.32*dt);c.x+=c.vx*dt;c.y+=c.vy*dt;c.angle+=c.vx*dt/R;}
+ const next=pusherAt(time),pusherVelocity=(next-pusherY)/dt;pusherY=next;
+ for(const c of coins){
+  if(c.falling)c.vy+=680*dt;
+  else { const drag=Math.exp(-5*dt);c.vx*=drag;c.vy*=drag; }
+  if(c.lift>0){c.vz+=680*dt;c.lift=Math.max(0,c.lift-c.vz*dt);}
+  c.x+=c.vx*dt;c.y+=c.vy*dt;c.angle+=c.vx*dt/R;
+ }
  // Repeated contact solving supports dense, stable stacks.
  for(let iteration=0;iteration<7;iteration++){
   for(let i=0;i<coins.length;i++){
-   const a=coins[i];
+   const a=coins[i];if(a.falling||a.lift>0)continue;
    for(let j=i+1;j<coins.length;j++){
-    const b=coins[j],dx=b.x-a.x,dy=b.y-a.y;
+    const b=coins[j];if(b.falling||b.lift>0)continue;const dx=b.x-a.x,dy=b.y-a.y;
     if(Math.abs(dx)>=2*R||Math.abs(dy)>=2*R)continue;
     const distance=Math.hypot(dx,dy);if(distance>=2*R)continue;
     const nx=distance>.001?dx/distance:1,ny=distance>.001?dy/distance:0,overlap=(2*R-distance)*.5;
@@ -59,20 +64,17 @@ function simulate(dt){
    }
   }
   for(const c of coins){
-   if(c.x<45){c.x=45;c.vx=Math.max(0,c.vx);}
-   // Nearest-point collision preserves the platform's rounded edge contact.
-   const px=Math.max(35,Math.min(EDGE,c.x)),py=Math.max(FLOOR,Math.min(FLOOR+20,c.y));
-   const dx=c.x-px,dy=c.y-py,distance=Math.hypot(dx,dy);
-   if(distance<R&&distance>.001){
-    const nx=dx/distance,ny=dy/distance;c.x+=nx*(R-distance);c.y+=ny*(R-distance);
-    const speed=c.vx*nx+c.vy*ny;if(speed<0){c.vx-=speed*nx;c.vy-=speed*ny;}
-    if(ny<-.5)c.vx*=.97;
-   }
-   if(c.y+R>290&&c.y-R<FLOOR&&c.x-R<pusherX){c.x=pusherX+R;c.vx=Math.max(c.vx,pusherVelocity);}
+   if(c.falling||c.lift>0)continue;
+   if(c.x<LEFT+R){c.x=LEFT+R;c.vx=Math.max(0,c.vx);}
+   if(c.x>RIGHT-R){c.x=RIGHT-R;c.vx=Math.min(0,c.vx);}
+   // The full-width rear plate pushes toward the open front edge.
+   if(c.y-R<pusherY){c.y=pusherY+R;c.vy=Math.max(c.vy,pusherVelocity);}
+   if(c.y>EDGE+R*.4){c.falling=true;c.vy=Math.max(35,c.vy);}
+
   }
  }
  coins=coins.filter(c=>{
-  if(c.y>485&&c.x>EDGE){score++;scoreElement.textContent=score;particles.push({x:Math.min(425,c.x),y:470,life:1});return false;}
+  if(c.falling&&c.y>505){score++;scoreElement.textContent=score;particles.push({x:c.x,y:488,life:1});return false;}
   return c.y<650;
  });
  for(const p of particles){p.life-=dt*1.6;p.y-=dt*28;}particles=particles.filter(p=>p.life>0);
@@ -80,14 +82,28 @@ function simulate(dt){
 function draw(){
  ctx.clearRect(0,0,460,540);ctx.fillStyle='#253a29';
  for(let x=25;x<460;x+=25)for(let y=20;y<540;y+=25)ctx.fillRect(x,y,1,1);
- ctx.textAlign='center';ctx.fillStyle='#a8ba9b';ctx.font='10px sans-serif';ctx.fillText('DROP ZONE',235,31);
- ctx.strokeStyle='#62765b';ctx.setLineDash([3,5]);ctx.beginPath();ctx.moveTo(170,47);ctx.lineTo(170,90);ctx.moveTo(295,47);ctx.lineTo(295,90);ctx.stroke();ctx.setLineDash([]);
- ctx.fillStyle='#101e16';ctx.fillRect(35,FLOOR+20,EDGE-35,72);ctx.fillStyle='#59715a';ctx.fillRect(35,FLOOR,EDGE-35,20);ctx.fillStyle='#a6b98e';ctx.fillRect(35,FLOOR,EDGE-35,3);
- ctx.fillStyle='#344b3b';ctx.fillRect(35,326,pusherX-35,22);ctx.fillStyle='#9cbaa0';ctx.fillRect(pusherX-13,290,13,FLOOR-290);ctx.fillStyle='#d0dfb5';ctx.fillRect(pusherX-3,290,3,FLOOR-290);
- ctx.fillStyle='#78937b';ctx.font='9px sans-serif';ctx.fillText('PUSH →',80,448);
- ctx.fillStyle='#2c432f';ctx.fillRect(365,482,77,32);ctx.strokeStyle='#b0c693';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(365,478);ctx.lineTo(365,516);ctx.lineTo(442,516);ctx.lineTo(442,478);ctx.stroke();ctx.fillStyle='#bed09f';ctx.fillText('COLLECT',403,535);
+ ctx.textAlign='center';
+ // Looking down onto the deck: rear mechanism, side rails, open collection lip.
+ ctx.fillStyle='#21392a';ctx.fillRect(LEFT,62,RIGHT-LEFT,EDGE-62);
+ ctx.strokeStyle='#2c4832';ctx.lineWidth=1;
+ for(let x=LEFT+20;x<RIGHT;x+=24){ctx.beginPath();ctx.moveTo(x,65);ctx.lineTo(x,EDGE);ctx.stroke();}
+ ctx.fillStyle='#101e16';ctx.fillRect(LEFT,EDGE,RIGHT-LEFT,68);
+ ctx.fillStyle='#527052';ctx.fillRect(LEFT-12,62,12,EDGE-62);ctx.fillRect(RIGHT,62,12,EDGE-62);
+ ctx.fillStyle='#829977';ctx.fillRect(LEFT-3,62,3,EDGE-62);ctx.fillRect(RIGHT,62,3,EDGE-62);
+ ctx.fillStyle='#344f39';ctx.fillRect(LEFT,62,RIGHT-LEFT,pusherY-62);
+ ctx.fillStyle='#738c70';ctx.fillRect(110,72,12,Math.max(0,pusherY-90));ctx.fillRect(338,72,12,Math.max(0,pusherY-90));
+ ctx.fillStyle='#9cbaa0';ctx.fillRect(LEFT,pusherY-24,RIGHT-LEFT,24);
+ ctx.fillStyle='#d0dfb5';ctx.fillRect(LEFT,pusherY-4,RIGHT-LEFT,4);
+ ctx.fillStyle='#a8ba9b';ctx.font='10px sans-serif';ctx.fillText('DROP ZONE / PUSH ↓',230,35);
+ ctx.fillStyle='#afc58c';ctx.fillRect(LEFT,EDGE,RIGHT-LEFT,3);
+ ctx.strokeStyle='#506b45';ctx.setLineDash([4,6]);ctx.beginPath();ctx.moveTo(LEFT+8,EDGE+35);ctx.lineTo(RIGHT-8,EDGE+35);ctx.stroke();ctx.setLineDash([]);
+ ctx.fillStyle='#bed09f';ctx.font='10px sans-serif';ctx.fillText('↓ COLLECTION TRAY ↓',230,531);
  for(const c of coins){
-  ctx.save();ctx.translate(c.x,c.y);ctx.rotate(c.angle);ctx.shadowColor='#0006';ctx.shadowBlur=3;ctx.shadowOffsetY=2;
+  ctx.save();
+  if(c.lift>0){ctx.fillStyle='#0005';ctx.beginPath();ctx.ellipse(c.x,c.y,R,R*.65,0,0,Math.PI*2);ctx.fill();}
+  ctx.translate(c.x,c.y-c.lift);ctx.rotate(c.angle);
+  if(c.falling){const scale=Math.max(.3,1-(c.y-EDGE)/100);ctx.scale(scale,scale);ctx.globalAlpha=Math.max(0,1-(c.y-EDGE)/90);}
+  ctx.shadowColor='#0006';ctx.shadowBlur=3;ctx.shadowOffsetY=2;
   ctx.fillStyle='#e6b74f';ctx.beginPath();ctx.arc(0,0,R,0,Math.PI*2);ctx.fill();ctx.shadowColor='transparent';ctx.strokeStyle='#ffe49a';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(0,0,R-2,0,Math.PI*2);ctx.stroke();ctx.fillStyle='#a77629';ctx.font='bold 10px sans-serif';ctx.fillText('1',0,3.5);ctx.restore();
  }
  for(const p of particles){ctx.globalAlpha=p.life;ctx.fillStyle='#ffe09a';ctx.font='bold 17px sans-serif';ctx.fillText('+1',p.x,p.y);}ctx.globalAlpha=1;
