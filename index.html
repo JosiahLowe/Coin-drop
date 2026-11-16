@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#101c17">
+<title>COIN DROP</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#101c17;color:#edf3e5;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;min-height:100vh;min-height:100svh;display:grid;place-items:center;padding: max(16px,env(safe-area-inset-top)) 16px max(16px,env(safe-area-inset-bottom))}main{width:min(100%,440px)}header{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}.label{font-size:10px;letter-spacing:.18em;color:#9bac99}h1{font-size:36px;letter-spacing:-.055em;margin:5px 0}h1 span{color:#ecca72}.score{text-align:right}output{display:block;font-size:32px;color:#ecca72;font-weight:700;font-variant-numeric:tabular-nums}.machine{border:1px solid #425743;border-radius:20px;overflow:hidden;background:#19291f;box-shadow:0 22px 60px #0003}.bar{display:flex;justify-content:space-between;padding:13px 16px;border-bottom:1px solid #344b37;font-size:10px;letter-spacing:.15em;color:#a7baa0}.live{color:#cae9ae}canvas{display:block;width:100%;height:auto;aspect-ratio:460/540}.controls{display:grid;grid-template-columns:1fr 64px;gap:10px;margin-top:16px}button{min-height:58px;border:0;border-radius:13px;font:inherit;font-weight:750;touch-action:manipulation;-webkit-tap-highlight-color:transparent;cursor:pointer}#drop{background:#ecca72;color:#243019;letter-spacing:.1em;box-shadow:0 4px #967638}#drop:active{background:#f9db8e}#reset{background:#2a3e2d;color:#e5eddb;font-size:26px}button:focus-visible{outline:3px solid white;outline-offset:4px}.hint{text-align:center;font-size:12px;color:#9bac99;line-height:1.7;margin:17px 0}footer{display:flex;justify-content:space-between;font-size:9px;letter-spacing:.13em;color:#73876e;margin-top:20px}@media(max-height:740px){main{max-width:350px}header{margin-bottom:10px}h1{font-size:30px}footer{margin-top:12px}.hint{margin:12px 0}}
+</style>
+</head>
+<body>
+<main>
+<header><div><div class="label">POCKET ARCADE / 001</div><h1>COIN DROP<span>.</span></h1></div><div class="score"><span class="label">COLLECTED</span><output id="score" aria-label="Collected coins">0</output></div></header>
+<section class="machine" aria-label="Coin pusher machine"><div class="bar"><span>SIDE VIEW</span><span class="live">● IN PLAY</span></div><canvas id="game" width="460" height="540" aria-label="Animated coin pusher. Drop coins to push the pile over the right edge.">Use Drop Coin to play.</canvas></section>
+<div class="controls"><button id="drop" type="button">＋ DROP COIN</button><button id="reset" type="button" aria-label="Reset game" title="Reset game">↺</button></div>
+<p class="hint">Time your drop. Push the pile. Collect the gold.<br>Every coin over the edge earns a point.</p>
+<footer><span>NO TOKENS REQUIRED</span><span>JUST ONE MORE DROP ↗</span></footer>
+</main>
+<script>
+'use strict';
+const canvas=document.getElementById('game'),ctx=canvas.getContext('2d'),scoreElement=document.getElementById('score');
+const R=10,FLOOR=395,EDGE=355,STEP=1/120;
+let coins=[],score=0,time=0,pusherX=56,accumulator=0,lastTime=null,particles=[];
+const pusherAt=t=>88-32*Math.cos(t*1.55);
+function coin(x,y){return{x,y,vx:0,vy:0,angle:Math.random()*6.28};}
+function reset(){
+ coins=[];
+ for(let row=0;row<5;row++)for(let col=0;col<11;col++)coins.push(coin(130+col*20.1+(row%2)*5,FLOOR-R-row*20.1));
+ score=0;time=0;pusherX=pusherAt(0);particles=[];accumulator=0;scoreElement.textContent='0';
+}
+function drop(){
+ // Bound simulation cost during sustained tapping.
+ if(coins.length>=180)return;
+ const c=coin(170+Math.random()*125,65);c.vx=(Math.random()-.5)*20;coins.push(c);
+}
+function simulate(dt){
+ time+=dt;
+ const next=pusherAt(time),pusherVelocity=(next-pusherX)/dt;pusherX=next;
+ for(const c of coins){c.vy+=680*dt;c.vx*=Math.exp(-.32*dt);c.x+=c.vx*dt;c.y+=c.vy*dt;c.angle+=c.vx*dt/R;}
+ // Repeated contact solving supports dense, stable stacks.
+ for(let iteration=0;iteration<7;iteration++){
+  for(let i=0;i<coins.length;i++){
+   const a=coins[i];
+   for(let j=i+1;j<coins.length;j++){
+    const b=coins[j],dx=b.x-a.x,dy=b.y-a.y;
+    if(Math.abs(dx)>=2*R||Math.abs(dy)>=2*R)continue;
+    const distance=Math.hypot(dx,dy);if(distance>=2*R)continue;
+    const nx=distance>.001?dx/distance:1,ny=distance>.001?dy/distance:0,overlap=(2*R-distance)*.5;
+    a.x-=nx*overlap;a.y-=ny*overlap;b.x+=nx*overlap;b.y+=ny*overlap;
+    const relative=(b.vx-a.vx)*nx+(b.vy-a.vy)*ny;
+    if(relative<0){
+     const impulse=-relative*.51;
+     a.vx-=impulse*nx;a.vy-=impulse*ny;b.vx+=impulse*nx;b.vy+=impulse*ny;
+     const tangent=(b.vx-a.vx)*-ny+(b.vy-a.vy)*nx;
+     const friction=Math.max(-impulse*.25,Math.min(impulse*.25,tangent*.5));
+     a.vx+=-ny*friction;a.vy+=nx*friction;b.vx-=-ny*friction;b.vy-=nx*friction;
+    }
+   }
+  }
+  for(const c of coins){
+   if(c.x<45){c.x=45;c.vx=Math.max(0,c.vx);}
+   // Nearest-point collision preserves the platform's rounded edge contact.
+   const px=Math.max(35,Math.min(EDGE,c.x)),py=Math.max(FLOOR,Math.min(FLOOR+20,c.y));
+   const dx=c.x-px,dy=c.y-py,distance=Math.hypot(dx,dy);
+   if(distance<R&&distance>.001){
+    const nx=dx/distance,ny=dy/distance;c.x+=nx*(R-distance);c.y+=ny*(R-distance);
+    const speed=c.vx*nx+c.vy*ny;if(speed<0){c.vx-=speed*nx;c.vy-=speed*ny;}
+    if(ny<-.5)c.vx*=.97;
+   }
+   if(c.y+R>290&&c.y-R<FLOOR&&c.x-R<pusherX){c.x=pusherX+R;c.vx=Math.max(c.vx,pusherVelocity);}
+  }
+ }
+ coins=coins.filter(c=>{
+  if(c.y>485&&c.x>EDGE){score++;scoreElement.textContent=score;particles.push({x:Math.min(425,c.x),y:470,life:1});return false;}
+  return c.y<650;
+ });
+ for(const p of particles){p.life-=dt*1.6;p.y-=dt*28;}particles=particles.filter(p=>p.life>0);
+}
+function draw(){
+ ctx.clearRect(0,0,460,540);ctx.fillStyle='#253a29';
+ for(let x=25;x<460;x+=25)for(let y=20;y<540;y+=25)ctx.fillRect(x,y,1,1);
+ ctx.textAlign='center';ctx.fillStyle='#a8ba9b';ctx.font='10px sans-serif';ctx.fillText('DROP ZONE',235,31);
+ ctx.strokeStyle='#62765b';ctx.setLineDash([3,5]);ctx.beginPath();ctx.moveTo(170,47);ctx.lineTo(170,90);ctx.moveTo(295,47);ctx.lineTo(295,90);ctx.stroke();ctx.setLineDash([]);
+ ctx.fillStyle='#101e16';ctx.fillRect(35,FLOOR+20,EDGE-35,72);ctx.fillStyle='#59715a';ctx.fillRect(35,FLOOR,EDGE-35,20);ctx.fillStyle='#a6b98e';ctx.fillRect(35,FLOOR,EDGE-35,3);
+ ctx.fillStyle='#344b3b';ctx.fillRect(35,326,pusherX-35,22);ctx.fillStyle='#9cbaa0';ctx.fillRect(pusherX-13,290,13,FLOOR-290);ctx.fillStyle='#d0dfb5';ctx.fillRect(pusherX-3,290,3,FLOOR-290);
+ ctx.fillStyle='#78937b';ctx.font='9px sans-serif';ctx.fillText('PUSH →',80,448);
+ ctx.fillStyle='#2c432f';ctx.fillRect(365,482,77,32);ctx.strokeStyle='#b0c693';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(365,478);ctx.lineTo(365,516);ctx.lineTo(442,516);ctx.lineTo(442,478);ctx.stroke();ctx.fillStyle='#bed09f';ctx.fillText('COLLECT',403,535);
+ for(const c of coins){
+  ctx.save();ctx.translate(c.x,c.y);ctx.rotate(c.angle);ctx.shadowColor='#0006';ctx.shadowBlur=3;ctx.shadowOffsetY=2;
+  ctx.fillStyle='#e6b74f';ctx.beginPath();ctx.arc(0,0,R,0,Math.PI*2);ctx.fill();ctx.shadowColor='transparent';ctx.strokeStyle='#ffe49a';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(0,0,R-2,0,Math.PI*2);ctx.stroke();ctx.fillStyle='#a77629';ctx.font='bold 10px sans-serif';ctx.fillText('1',0,3.5);ctx.restore();
+ }
+ for(const p of particles){ctx.globalAlpha=p.life;ctx.fillStyle='#ffe09a';ctx.font='bold 17px sans-serif';ctx.fillText('+1',p.x,p.y);}ctx.globalAlpha=1;
+}
+function frame(now){
+ if(lastTime!==null)accumulator+=Math.min((now-lastTime)/1000,.05);lastTime=now;
+ while(accumulator>=STEP){simulate(STEP);accumulator-=STEP;}draw();requestAnimationFrame(frame);
+}
+document.getElementById('drop').addEventListener('click',drop);
+document.getElementById('reset').addEventListener('click',reset);
+document.addEventListener('visibilitychange',()=>{lastTime=null;accumulator=0;});
+reset();requestAnimationFrame(frame);
+</script>
+</body>
+</html>
