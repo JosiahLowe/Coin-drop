@@ -26,27 +26,51 @@ class DungeonWalkway {
     for (const name of ['contextmenu', 'selectstart', 'dragstart', 'touchstart']) {
       controls.addEventListener(name, e => e.preventDefault(), { passive: false });
     }
-    const releasePointer = e => { this.pointers.delete(e.pointerId); this.refreshButtons(); };
-    window.addEventListener('pointermove', e => {
-      if (!this.pointers.has(e.pointerId) || this.pointers.get(e.pointerId) === 'jump') return;
+    const actionAt = (x, y) => {
+      const button = this.buttons.find(button => {
+        const box = button.getBoundingClientRect();
+        return !button.disabled && x >= box.left && x <= box.right && y >= box.top && y <= box.bottom;
+      });
+      return button?.dataset.knight ?? null;
+    };
+    const slide = (id, x, y) => {
+      if (!this.pointers.has(id) || this.pointers.get(id) === 'jump') return;
+      const action = actionAt(x, y);
+      this.pointers.set(id, action === 'left' || action === 'right' ? action : null);
+      this.refreshButtons();
+    };
+    // Touch targets remain the original element throughout a gesture on iOS.
+    // Track each finger by identifier and use its coordinates, never its target.
+    controls.addEventListener('touchstart', e => {
       e.preventDefault();
-      // Capture keeps release reliable, so hit-test the finger's actual
-      // location instead of using the originally captured button.
-      const target = document.elementFromPoint(e.clientX, e.clientY)?.closest('[data-knight]');
-      const action = target && controls.contains(target) && !target.disabled ? target.dataset.knight : null;
-      this.pointers.set(e.pointerId, action === 'left' || action === 'right' ? action : null);
+      for (const touch of e.changedTouches) {
+        const action = actionAt(touch.clientX, touch.clientY);
+        if (!action) continue;
+        this.pointers.set('touch:' + touch.identifier, action);
+        if (action === 'jump') this.jumpQueued = true;
+      }
+      this.refreshButtons();
+    }, { passive: false });
+    window.addEventListener('touchmove', e => {
+      let handled = false;
+      for (const touch of e.changedTouches) {
+        const id = 'touch:' + touch.identifier;
+        if (!this.pointers.has(id)) continue;
+        handled = true; slide(id, touch.clientX, touch.clientY);
+      }
+      if (handled) e.preventDefault();
+    }, { passive: false });
+    for (const name of ['touchend', 'touchcancel']) window.addEventListener(name, e => {
+      for (const touch of e.changedTouches) this.pointers.delete('touch:' + touch.identifier);
       this.refreshButtons();
     });
+    const releasePointer = e => { this.pointers.delete(e.pointerId); this.refreshButtons(); };
+    window.addEventListener('pointermove', e => slide(e.pointerId, e.clientX, e.clientY));
     window.addEventListener('pointerup', releasePointer);
     window.addEventListener('pointercancel', releasePointer);
-    // Some touch browsers end a cancelled gesture without a matching
-    // pointer release. Do not leave movement held after all fingers lift.
-    for (const event of ['touchend', 'touchcancel']) window.addEventListener(event, e => {
-      if (e.touches.length === 0) { this.pointers.clear(); this.refreshButtons(); }
-    });
     for (const button of this.buttons) {
       button.addEventListener('pointerdown', e => {
-        if (e.button !== 0) return;
+        if (e.pointerType === 'touch' || e.button !== 0) return;
         e.preventDefault();
         // Keep movement usable even if a browser declines capture; window
         // release handlers below still clear the pointer.

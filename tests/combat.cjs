@@ -11,6 +11,17 @@ const path=require('node:path');
    await page.addInitScript(()=>{window.requestAnimationFrame=()=>0;});await page.goto('http://coin.test/');
    const result=await page.evaluate(()=>{
     const check=(condition,message)=>{if(!condition)throw Error(message);};
+    // Bottom corners stay square and grounded throughout the squash cycle.
+    const surface=document.createElement('canvas');surface.width=200;surface.height=150;
+    const ink=surface.getContext('2d'),slime=new Slime(100,COMBAT_CONFIG.slime);
+    for(const age of [0,.15,.3,.45]){
+     ink.clearRect(0,0,200,150);slime.age=age;slime.draw(ink,122);
+     const r=slime.config.radius+Math.sin(age*10)*1.5;
+     for(const x of [Math.ceil(100-r)+1,Math.floor(100+r)-2]){
+      check(ink.getImageData(x,121,1,1).data[3]===255,'Rounded bottom corner');
+      check(ink.getImageData(x,122,1,1).data[3]===0,'Slime below floor');
+     }
+    }
     const tick=(seconds,move=false)=>{for(let t=0;t<seconds-1e-8;t+=STEP){if(move)dungeon.update(STEP);combat.update(STEP);}};
     const fresh=()=>{combat.restart();combat.enemy.config={...combat.enemy.config,speed:0};};
     check(combat.enemy&&Math.abs(combat.enemy.x-dungeon.x)>110,'Initial spawn distance');

@@ -45,11 +45,11 @@ class Slime {
     const squash = Math.sin(this.age * 10) * 1.5;
     ctx.fillStyle = this.hitTimer > 0 && Math.floor(this.hitTimer * 30) % 2 ? '#fff0cf' : '#b17ed1';
     const radius = this.config.radius + squash;
+    // A rectangular lower body sits flush on the walkway at every squash
+    // phase; only the dome above it is rounded.
+    ctx.fillRect(this.x - radius, floor - 14, radius * 2, 14);
     ctx.beginPath();
-    ctx.moveTo(this.x - radius, floor);
-    ctx.lineTo(this.x - radius, floor - 12);
-    ctx.ellipse(this.x, floor - 12, radius, this.config.height - 12 - squash, 0, Math.PI, Math.PI * 2);
-    ctx.lineTo(this.x + radius, floor);
+    ctx.ellipse(this.x, floor - 14, radius, this.config.height - 14 - squash, 0, Math.PI, Math.PI * 2);
     ctx.closePath(); ctx.fill();
     ctx.fillStyle = '#302638'; ctx.fillRect(this.x - 7, floor - 22, 3, 4); ctx.fillRect(this.x + 4, floor - 22, 3, 4);
   }
