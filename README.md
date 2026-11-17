@@ -33,7 +33,7 @@ The same supported weight affects edge balance: rear weight can pin an
 overhang, while forward weight can tip it. Removing or shifting a counterweight
 releases the coin into a short tipping animation and then gravity.
 A forward stroke that contacts the lower pile can produce one brief mechanical
-bump. It travels through touching coins to the front edge and jolts the upper
+bump, eased over 140 ms with a faint fading lip highlight. It travels through touching coins to the front edge and jolts the upper
 lip above the contact columns. Edge coins can fall, and upper coins can tumble
 onto the lower stacks; heavier piles resist the impulse. Disconnected coins
 stay still, and the return stroke does not trigger a bump.

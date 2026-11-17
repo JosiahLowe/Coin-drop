@@ -48,7 +48,7 @@ let pusherY = 235, accumulator = 0, lastTime = null, particles = [];
 let bumpUsed = false, bumpFlash = 0;
 const pusherAt = t => 260 - 25 * Math.cos(t * 1.55);
 function coin(x, y, z = 0) {
-  return { x, y, z, vx: 0, vy: 0, vz: 0, angle: Math.random() * Math.PI * 2, falling: false, tip: 0, pinned: false, load: 1, support: null, stackLevel: 0 };
+  return { x, y, z, vx: 0, vy: 0, vz: 0, angle: Math.random() * Math.PI * 2, falling: false, tip: 0, pinned: false, load: 1, support: null, stackLevel: 0, bumpImpulse: 0, bumpElapsed: 0 };
 }
 function reset() {
   time = 0; pusherY = pusherAt(0); coins = []; particles = [];
@@ -161,8 +161,10 @@ function forwardBump(contacts, speed) {
     // The returning load also jolts the upper lip, above the contact columns.
     if (upperEdge && !queue.some(b => Math.abs(b.x - c.x) < R * 2)) continue;
     const lane = .65 + .35 * Math.abs(Math.sin(c.x * .047 + Math.floor(time / 4.05) * 1.37));
-    const impulse = (upperEdge ? 110 : 85) * strength * lane / Math.sqrt(c.load);
-    c.vy += impulse;
+    // Spread a smaller nudge over 140 ms instead of snapping velocity in
+    // one frame. The smooth pulse still loosens coins already near the lip.
+    c.bumpImpulse = (upperEdge ? 85 : 55) * strength * lane / Math.sqrt(c.load);
+    c.bumpElapsed = 0;
   }
   bumpFlash = 1;
   return true;
@@ -185,6 +187,14 @@ function simulate(dt) {
     const grounded = !c.falling && Math.abs(c.vz) < 1;
     if (grounded && Math.abs(c.z - SHELF_HEIGHT) < .1 && c.y <= previousShelfY && c.y >= BACK) {
       c.carryY = delta; c.y += c.carryY;
+    }
+    if (c.bumpImpulse > 0) {
+      const before = Math.min(1, c.bumpElapsed / .14);
+      c.bumpElapsed += dt;
+      const after = Math.min(1, c.bumpElapsed / .14);
+      // Integral of a half-sine pulse, so acceleration starts and ends gently.
+      c.vy += c.bumpImpulse * (Math.cos(before * Math.PI) - Math.cos(after * Math.PI)) * .5;
+      if (after === 1) c.bumpImpulse = 0;
     }
     // Dry friction stops coins decisively instead of letting them coast forever.
     const velocity = Math.hypot(c.vx, c.vy);
@@ -331,7 +341,7 @@ function draw() {
   ctx.strokeStyle = '#ecca7280'; ctx.setLineDash([3, 4]);
   ctx.beginPath(); ctx.moveTo(dropX, BACK - 18); ctx.lineTo(dropX, BACK + R + 6 - SHELF_HEIGHT * .38); ctx.stroke(); ctx.setLineDash([]);
   ctx.fillStyle = '#395a3e'; ctx.fillRect(LEFT, pusherY - 12, RIGHT - LEFT, 12);
-  ctx.fillStyle = bumpFlash > 0 ? '#f5d583' : '#d0dfb5'; ctx.fillRect(LEFT, pusherY - 14, RIGHT - LEFT, 3);
+  ctx.fillStyle = 'rgb(' + Math.round(208 + 9 * bumpFlash) + ',' + Math.round(223 + 7 * bumpFlash) + ',' + Math.round(181 + 7 * bumpFlash) + ')'; ctx.fillRect(LEFT, pusherY - 14, RIGHT - LEFT, 3);
   ctx.fillStyle = '#d1dfbb'; ctx.font = '9px sans-serif'; ctx.fillText('DROP AT THE BACK', 230, BACK - 42);
   for (const c of sorted) if (c.z >= SHELF_HEIGHT - 1) drawCoin(c);
   ctx.fillStyle = '#a8ba9b'; ctx.font = '10px sans-serif'; ctx.fillText(speedLabel(), 230, 35);
