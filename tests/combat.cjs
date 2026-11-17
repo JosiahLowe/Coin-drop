@@ -36,6 +36,22 @@ const path=require('node:path');
     check(!combat.enemy&&score===balance+1&&coins.length===count,'Exactly one currency reward, no machine coin spawn');
     tick(2.8);check(!combat.enemy,'Spawn too early');tick(.25);check(combat.enemy,'Respawn missing');
     check(combat.enemy.x<dungeon.x,'Alternating spawn side');
+    // Crossing overhead does not reverse pursuit until the knight lands.
+    for(const direction of [-1,1]){
+     combat.restart();const enemy=combat.enemy;
+     enemy.x=230;dungeon.x=230+direction*70;enemy.update(STEP,dungeon);
+     check(enemy.moveDirection===direction,'Grounded pursuit direction');
+     dungeon.y=dungeon.floor-60;dungeon.x=230-direction*70;
+     const before=enemy.x;enemy.update(.2,dungeon);
+     check((enemy.x-before)*direction>0&&enemy.moveDirection===direction,'Airborne pursuit reversed');
+     dungeon.y=dungeon.floor;enemy.update(STEP,dungeon);
+     check(enemy.moveDirection===-direction,'Pursuit did not resume on landing');
+    }
+    // A full moving jump clears a slime without it turning underneath us.
+    combat.restart();combat.enemy.x=310;dungeon.keys.add('KeyD');dungeon.jumpQueued=true;
+    tick(.75,true);dungeon.clearInput();
+    check(dungeon.y===dungeon.floor&&combat.health.hearts===3,'Jump-over caused body damage');
+    check(dungeon.x>combat.enemy.x,'Jump did not clear slime');
     // Behind body contact damages the player, then invulnerability blocks it.
     fresh();combat.enemy.x=dungeon.x-8;combat.update(STEP);
     check(combat.health.hearts===2,'Rear body damage');

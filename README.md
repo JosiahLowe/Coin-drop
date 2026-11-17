@@ -45,6 +45,9 @@ a 0.4-second per-enemy cooldown. Sword collision is resolved before body
 contact, and a struck slime cannot hurt the knight during that cooldown.
 The sword hitbox follows the visible blade, facing direction, and jumping pose.
 
+Slimes keep their last pursuit direction while the knight is airborne and
+resume tracking after landing, making jumps over them predictable.
+
 The knight has three hearts. Body contact costs one heart, gives one second
 of flashing invulnerability, and applies a short knockback. At zero hearts,
 movement, jumping, dropping, enemies, and spawning stop. GAME OVER and a

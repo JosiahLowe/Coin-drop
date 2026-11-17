@@ -22,7 +22,8 @@ class PlayerHealth {
 }
 
 class Slime {
-  constructor(x, config) {
+  constructor(x, config, moveDirection = 0) {
+    this.moveDirection = moveDirection;
     this.x = x; this.config = config; this.hp = config.health;
     this.hitTimer = 0; this.recoil = 0; this.direction = 0; this.age = 0;
   }
@@ -32,7 +33,10 @@ class Slime {
     const recoilStep = Math.min(dt, this.recoil);
     this.recoil = Math.max(0, this.recoil - dt);
     this.x += this.direction * this.config.recoilSpeed * recoilStep;
-    this.x += Math.sign(knight.x - this.x) * this.config.speed * (dt - recoilStep);
+    // Commit to the last grounded pursuit direction throughout a jump.
+    // Recoil remains independent and still works on airborne sword hits.
+    if (knight.y >= knight.floor) this.moveDirection = Math.sign(knight.x - this.x);
+    this.x += this.moveDirection * this.config.speed * (dt - recoilStep);
     this.x = Math.max(knight.left + this.config.radius, Math.min(knight.right - this.config.radius, this.x));
   }
   hit(damage, direction, cooldown) {
@@ -67,7 +71,7 @@ class SlimeSpawner {
     // If the knight is camping at the entry, use the opposite edge.
     if (Math.abs(x - knight.x) < 110) x = x > (knight.left + knight.right) / 2 ? knight.left + this.config.slime.radius : knight.right - this.config.slime.radius;
     this.side *= -1;
-    return new Slime(x, this.config.slime);
+    return new Slime(x, this.config.slime, Math.sign(knight.x - x));
   }
   defeated() { this.timer = this.config.spawnDelay; }
 }
