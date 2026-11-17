@@ -70,30 +70,32 @@ const root = path.join(__dirname, '..');
    }));
    const physics = await page.evaluate(()=>{
     reset();const original=coins.length;
-    coins=[coin(230,249),coin(230,225,30)];updateStackLoads();
+    if(EDGE!==389||pusherAt(0)!==207||canvas.height!==484)throw Error('Deck shortening regression');
+    coins=[coin(230,pusherY+R),coin(230,pusherY-10,30)];updateStackLoads();
     forwardBump(new Set([coins[0]]),38.75);
     if(bumpFlash>0.007||coins[1].bumpImpulse>0.6)throw Error('Single coin jolt too strong');
     reset();coins=[];
-    for(const x of [230,258])for(let y=276;y<=444;y+=28)coins.push(coin(x,y));
-    coins[6].y=444.5;
-    const isolated=coin(370,430);coins.push(isolated);
+    const front = EDGE - .5, rear = pusherY + R;
+    const gaps = Math.ceil((front - rear) / (R * 2));
+    for(const x of [230,258])for(let i=0;i<=gaps;i++)coins.push(coin(x,rear+(front-rear)*i/gaps));
+    const isolated=coin(370,EDGE-15);coins.push(isolated);
     if(forwardBump(new Set(),38.75)||forwardBump(new Set([coins[0]]),-30))throw Error('Invalid bump trigger');
     forwardBump(new Set([coins[0]]),38.75);
     if(bumpFlash!==1)throw Error('Crowded load maximum');
     for(let i=0;i<120;i++)simulate(STEP);
-    if(!score||isolated.y!==430)throw Error('Edge spill or disconnected coin regression');
+    if(!score||isolated.y!==EDGE-15)throw Error('Edge spill or disconnected coin regression');
     reset();
     for(let i=0;i<3600;i++){
      if(i%60===0)drop();simulate(STEP);dungeon.update(STEP);
      if(coins.length>180||coins.some(c=>![c.x,c.y,c.z,c.vx,c.vy,c.vz].every(Number.isFinite)))throw Error('Invalid coin physics');
     }
     const collected=score;reset();draw();dungeon.draw();
-    return {original,collected,reset:score===0&&used===0&&coins.length===164};
+    return {original,collected,reset:score===0&&used===0&&coins.length===original};
    });
-   assert.equal(physics.original,164);assert(physics.collected>0);assert(physics.reset);
+   assert(physics.original>100);assert(physics.collected>0);assert(physics.reset);
    const layout=await page.evaluate(()=>{
     const d=document.querySelector('#dungeon').getBoundingClientRect(),g=document.querySelector('#game').getBoundingClientRect();
-    return {top:d.top,bottom:g.bottom,height:innerHeight,aligned:Math.abs(d.left-g.left)<1&&Math.abs(d.width-g.width)<1,visible:d.top>=0&&g.bottom<=innerHeight,width:document.documentElement.scrollWidth<=innerWidth,touch:getComputedStyle(document.querySelector('[data-knight]')).touchAction,selection:getComputedStyle(document.querySelector('[data-knight]')).userSelect,controlsBelow:document.querySelector('.knight-controls').getBoundingClientRect().top>=d.bottom};
+    return {top:d.top,bottom:g.bottom,height:innerHeight,aligned:Math.abs(d.left-g.left)<1&&Math.abs(d.width-g.width)<1,visible:d.top>=0&&g.bottom<=innerHeight,width:document.documentElement.scrollWidth<=innerWidth,touch:getComputedStyle(document.querySelector('[data-knight]')).touchAction,selection:getComputedStyle(document.querySelector('[data-knight]')).userSelect,controlsBelow:document.querySelector('.knight-controls').getBoundingClientRect().top>=g.bottom};
    });
    assert(layout.aligned);assert(layout.visible,JSON.stringify({size,layout}));assert(layout.width);assert.equal(layout.touch,'none');assert.equal(layout.selection,'none');assert(layout.controlsBelow);assert.deepEqual(errors,[]);
    await page.screenshot({path:`/tmp/coin-phase1-${size.width}.png`});

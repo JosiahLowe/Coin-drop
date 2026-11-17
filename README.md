@@ -10,7 +10,7 @@ Open `index.html` in a modern browser, including Safari on iPhone. Play starts
 automatically. Move the knight left or right to choose the drop position,
 then tap **Drop Coin** to add a coin at the highlighted marker. Every coin that falls over the
 bottom edge into the collection area earns one point. Tap **↺** to reset the
-score and Used counter and refill both surfaces with 164 coins in close-packed rows and small stacks. The Used
+score and Used counter and refill both surfaces with 128 coins in close-packed rows and small stacks. The Used
 counter tracks tokens you drop, excluding the starting pile. Reset keeps the aim aligned with the knight. Coins are free.
 
 For local HTTP hosting, run `python3 -m http.server 8000` in this directory
@@ -27,8 +27,9 @@ The geometric knight has a helmet, a walking stride, a jumping pose, and an
 extended decorative sword. The stone walkway shares the machine's horizontal
 bounds, but `knight.js` owns its movement and gravity. Both canvases use the
 same animation loop. The coin aimer follows the knight’s horizontal position directly; jumping
-does not change the aim. The movement controls sit above the machine where
-the aim slider used to be. The Drop Coin button still spawns coins. Reset refills
+does not change the aim. All movement, jump, drop, and reset controls sit below the coin pusher.
+Both coin decks are shortened by one coin diameter (28 simulation units)
+without changing coin size, the pusher stroke, or the physics rules. The Drop Coin button still spawns coins. Reset refills
 the coin machine and does not reposition the knight.
 
 No enemies, combat, health, inventory, drops, or progression are implemented.
