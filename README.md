@@ -19,7 +19,10 @@ and open `http://localhost:8000`.
 Canvas rendering uses requestAnimationFrame and fixed 120 Hz physics steps.
 A raised moving shelf feeds a lower deck. Quarters have height and thickness,
 fall under gravity, land on other quarters, and form overlapping stacks.
-The shelf carries upper coins and pushes lower piles with its front face.
+Drops enter through a fixed rear slot. The forward stroke carries upper coins
+and pushes the lower pile with its front face; the return stroke withdraws
+the lip beneath the leading coins so they tumble onto the lower deck.
+Dry friction stops loose coins, and resting stacks have no automatic drift.
 Coins that cross the lower front lip fall into the collection tray. The mechanical
 pusher oscillates continuously. Active coins are capped at 180 to bound mobile
 CPU use; elapsed time is discarded when returning from a hidden tab.
