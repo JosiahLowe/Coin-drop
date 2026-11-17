@@ -13,110 +13,184 @@
 <main>
 <header><div><div class="label">POCKET ARCADE / 001</div><h1>COIN DROP<span>.</span></h1></div></header>
 <div class="stats" aria-label="Game counters"><div><span class="label">USED</span><output id="used" aria-label="Tokens dropped">0</output></div><div class="score"><span class="label">COLLECTED</span><output id="score" aria-label="Collected coins">0</output></div></div>
-<section class="machine" aria-label="Coin pusher machine"><div class="bar"><span>TOP VIEW</span><span class="live">● IN PLAY</span></div><canvas id="game" width="460" height="540" aria-label="Top-down coin pusher. Drop coins to push the pile over the bottom collection edge.">Use Drop Coin to play.</canvas></section>
+<section class="machine" aria-label="Coin pusher machine"><div class="bar"><span>TOP VIEW</span><span class="live">● IN PLAY</span></div><canvas id="game" width="460" height="540" aria-label="Top-down, two-level coin pusher. Drop quarters on the upper shelf, build overlapping piles, and push coins off the lower deck.">Use Drop Coin to play.</canvas></section>
 <div class="controls"><button id="drop" type="button">＋ DROP COIN</button><button id="reset" type="button" aria-label="Reset game" title="Reset game">↺</button></div>
-<p class="hint">Time your drop. Push the pile. Collect the gold.<br>Every coin over the edge earns a point.</p>
+<p class="hint">Drop onto the upper shelf. Stack, tumble, collect.<br>Every coin off the lower deck earns a point.</p>
 <footer><span>NO TOKENS REQUIRED</span><span>JUST ONE MORE DROP ↗</span></footer>
 </main>
 <script>
 'use strict';
-const canvas=document.getElementById('game'),ctx=canvas.getContext('2d'),scoreElement=document.getElementById('score'),usedElement=document.getElementById('used');
-const R=14,EDGE=445,LEFT=49,RIGHT=411,STEP=1/120;
-let coins=[],score=0,used=0,time=0,pusherY=130,accumulator=0,lastTime=null,particles=[];
-const pusherAt=t=>207-77*Math.cos(t*1.55);
-function coin(x,y){return{x,y,vx:0,vy:0,angle:Math.random()*6.28,lift:0,vz:0,falling:false};}
-function reset(){
- coins=[];
- for(let row=0;row<5;row++)for(let col=0;col<11;col++)coins.push(coin(72+col*31+(row%2)*5,290+row*31));
- score=0;used=0;usedElement.textContent='0';time=0;pusherY=pusherAt(0);particles=[];accumulator=0;scoreElement.textContent='0';
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const scoreElement = document.getElementById('score');
+const usedElement = document.getElementById('used');
+const R = 14, THICKNESS = 5, SHELF_HEIGHT = 30;
+const EDGE = 445, LEFT = 49, RIGHT = 411, STEP = 1 / 120;
+let coins = [], score = 0, used = 0, time = 0;
+let pusherY = 235, accumulator = 0, lastTime = null, particles = [];
+const pusherAt = t => 260 - 25 * Math.cos(t * 1.55);
+function coin(x, y, z = 0) {
+  return { x, y, z, vx: 0, vy: 0, vz: 0, angle: Math.random() * Math.PI * 2, falling: false };
 }
-function drop(){
- // Bound simulation cost during sustained tapping.
- if(coins.length>=180)return;
- const c=coin(85+Math.random()*290,pusherY+R+24);c.lift=65;c.vx=(Math.random()-.5)*14;c.vy=12;coins.push(c);used++;usedElement.textContent=used;
+function reset() {
+  time = 0; pusherY = pusherAt(0); coins = []; particles = [];
+  for (let row = 0; row < 2; row++) {
+    for (let col = 0; col < 10; col++) coins.push(coin(87 + col * 31, 177 + row * 30, SHELF_HEIGHT));
+  }
+  for (let row = 0; row < 4; row++) {
+    for (let col = 0; col < 8; col++) coins.push(coin(99 + col * 37 + (row % 2) * 6, 316 + row * 32));
+  }
+  // A few overlapping coins make the height of the starting piles visible.
+  for (const i of [22, 34, 45]) {
+    const base = coins[i]; coins.push(coin(base.x + 7, base.y + 4, THICKNESS));
+  }
+  score = 0; used = 0; accumulator = 0;
+  scoreElement.textContent = '0'; usedElement.textContent = '0';
 }
-function simulate(dt){
- time+=dt;
- const next=pusherAt(time),pusherVelocity=(next-pusherY)/dt;pusherY=next;
- for(const c of coins){
-  if(c.falling)c.vy+=680*dt;
-  else { const drag=Math.exp(-5*dt);c.vx*=drag;c.vy*=drag; }
-  if(c.lift>0){c.vz+=680*dt;c.lift=Math.max(0,c.lift-c.vz*dt);}
-  c.x+=c.vx*dt;c.y+=c.vy*dt;c.angle+=c.vx*dt/R;
- }
- // Repeated contact solving supports dense, stable stacks.
- for(let iteration=0;iteration<7;iteration++){
-  for(let i=0;i<coins.length;i++){
-   const a=coins[i];if(a.falling||a.lift>0)continue;
-   for(let j=i+1;j<coins.length;j++){
-    const b=coins[j];if(b.falling||b.lift>0)continue;const dx=b.x-a.x,dy=b.y-a.y;
-    if(Math.abs(dx)>=2*R||Math.abs(dy)>=2*R)continue;
-    const distance=Math.hypot(dx,dy);if(distance>=2*R)continue;
-    const nx=distance>.001?dx/distance:1,ny=distance>.001?dy/distance:0,overlap=(2*R-distance)*.5;
-    a.x-=nx*overlap;a.y-=ny*overlap;b.x+=nx*overlap;b.y+=ny*overlap;
-    const relative=(b.vx-a.vx)*nx+(b.vy-a.vy)*ny;
-    if(relative<0){
-     const impulse=-relative*.51;
-     a.vx-=impulse*nx;a.vy-=impulse*ny;b.vx+=impulse*nx;b.vy+=impulse*ny;
-     const tangent=(b.vx-a.vx)*-ny+(b.vy-a.vy)*nx;
-     const friction=Math.max(-impulse*.25,Math.min(impulse*.25,tangent*.5));
-     a.vx+=-ny*friction;a.vy+=nx*friction;b.vx-=-ny*friction;b.vy-=nx*friction;
+function drop() {
+  if (coins.length >= 180) return;
+  const c = coin(85 + Math.random() * 290, pusherY - 55, SHELF_HEIGHT + 85);
+  c.vx = (Math.random() - .5) * 15; c.vy = 12;
+  coins.push(c); used++; usedElement.textContent = used;
+}
+function surfaceAt(c) {
+  if (c.y > EDGE + R * .4) return -Infinity;
+  if (c.y <= pusherY && c.y >= pusherY - 130) return SHELF_HEIGHT;
+  return 0;
+}
+function simulate(dt) {
+  time += dt;
+  const next = pusherAt(time), delta = next - pusherY, speed = delta / dt;
+  pusherY = next;
+  for (const c of coins) {
+    // Friction carries quarters on the moving upper shelf. They can slip over its lip.
+    if (!c.falling && Math.abs(c.z - SHELF_HEIGHT) < .1 && Math.abs(c.vz) < 1 && c.y <= pusherY + 2) c.y += delta * .72;
+    const drag = Math.exp(-4 * dt); c.vx *= drag; c.vy *= drag;
+    c.x += c.vx * dt; c.y += c.vy * dt; c.angle += c.vx * dt / R;
+    c.previousZ = c.z;
+    c.vz -= 680 * dt; c.z += c.vz * dt;
+  }
+  // Resolve vertical contacts before planar collisions. A falling quarter can
+  // land on the top face of another quarter, rather than being pushed aside.
+  const ordered = coins.slice().sort((a, b) => a.z - b.z);
+  for (const c of ordered) {
+    if (c.falling) continue;
+    let support = surfaceAt(c), carrier = null;
+    if (support > c.previousZ + .6) support = 0;
+    for (const b of ordered) {
+      if (b === c || b.falling || b.vz < -1) continue;
+      const top = b.z + THICKNESS;
+      if (top > c.previousZ + .6 || top < support) continue;
+      if ((b.x - c.x) ** 2 + (b.y - c.y) ** 2 < (R * 1.25) ** 2) { support = top; carrier = b; }
     }
-   }
+    if (c.z <= support) {
+      c.z = support; c.vz = 0;
+      if (carrier) {
+        // Off-center stacks creep toward the front as the mechanism vibrates.
+        // This lets overlapping quarters slide off a pile instead of forming
+        // an indefinitely tall column at the drop point.
+        c.vy += 60 * dt;
+        c.x += carrier.vx * dt * .6; c.y += carrier.vy * dt * .6;
+      }
+    }
+    if (c.y > EDGE + R * .4 && c.z <= 1) { c.falling = true; c.vy = Math.max(c.vy, 35); }
   }
-  for(const c of coins){
-   if(c.falling||c.lift>0)continue;
-   if(c.x<LEFT+R){c.x=LEFT+R;c.vx=Math.max(0,c.vx);}
-   if(c.x>RIGHT-R){c.x=RIGHT-R;c.vx=Math.min(0,c.vx);}
-   // The full-width rear plate pushes toward the open front edge.
-   if(c.y-R<pusherY){c.y=pusherY+R;c.vy=Math.max(c.vy,pusherVelocity);}
-   if(c.y>EDGE+R*.4){c.falling=true;c.vy=Math.max(35,c.vy);}
-
+  for (let iteration = 0; iteration < 7; iteration++) {
+    for (let i = 0; i < coins.length; i++) {
+      const a = coins[i]; if (a.falling) continue;
+      for (let j = i + 1; j < coins.length; j++) {
+        const b = coins[j];
+        if (b.falling || Math.abs(a.z - b.z) >= THICKNESS - .3) continue;
+        const dx = b.x - a.x, dy = b.y - a.y;
+        if (Math.abs(dx) >= 2 * R || Math.abs(dy) >= 2 * R) continue;
+        const distance = Math.hypot(dx, dy); if (distance >= 2 * R) continue;
+        const nx = distance > .001 ? dx / distance : 1, ny = distance > .001 ? dy / distance : 0;
+        const overlap = (2 * R - distance) * .5;
+        a.x -= nx * overlap; a.y -= ny * overlap; b.x += nx * overlap; b.y += ny * overlap;
+        const relative = (b.vx - a.vx) * nx + (b.vy - a.vy) * ny;
+        if (relative < 0) {
+          const impulse = -relative * .51;
+          a.vx -= impulse * nx; a.vy -= impulse * ny; b.vx += impulse * nx; b.vy += impulse * ny;
+        }
+      }
+    }
+    for (const c of coins) {
+      if (c.falling) continue;
+      if (c.x < LEFT + R) { c.x = LEFT + R; c.vx = Math.max(0, c.vx); }
+      if (c.x > RIGHT - R) { c.x = RIGHT - R; c.vx = Math.min(0, c.vx); }
+      if (c.z < SHELF_HEIGHT - 1 && c.y - R < pusherY) {
+        // The shelf's front face shoves the lower pile on its forward stroke.
+        c.y = pusherY + R; c.vy = Math.max(c.vy, speed);
+      } else if (c.z >= SHELF_HEIGHT - 1 && c.y - R < pusherY - 110) {
+        c.y = pusherY - 110 + R; c.vy = Math.max(c.vy, speed);
+      }
+    }
   }
- }
- coins=coins.filter(c=>{
-  if(c.falling&&c.y>505){score++;scoreElement.textContent=score;particles.push({x:c.x,y:488,life:1});return false;}
-  return c.y<650;
- });
- for(const p of particles){p.life-=dt*1.6;p.y-=dt*28;}particles=particles.filter(p=>p.life>0);
+  coins = coins.filter(c => {
+    if (c.falling && (c.z < -65 || c.y > 510)) {
+      score++; scoreElement.textContent = score;
+      particles.push({ x: c.x, y: 489, life: 1 }); return false;
+    }
+    return true;
+  });
+  for (const p of particles) { p.life -= dt * 1.6; p.y -= dt * 28; }
+  particles = particles.filter(p => p.life > 0);
 }
-function draw(){
- ctx.clearRect(0,0,460,540);ctx.fillStyle='#253a29';
- for(let x=25;x<460;x+=25)for(let y=20;y<540;y+=25)ctx.fillRect(x,y,1,1);
- ctx.textAlign='center';
- // Looking down onto the deck: rear mechanism, side rails, open collection lip.
- ctx.fillStyle='#21392a';ctx.fillRect(LEFT,62,RIGHT-LEFT,EDGE-62);
- ctx.strokeStyle='#2c4832';ctx.lineWidth=1;
- for(let x=LEFT+20;x<RIGHT;x+=24){ctx.beginPath();ctx.moveTo(x,65);ctx.lineTo(x,EDGE);ctx.stroke();}
- ctx.fillStyle='#101e16';ctx.fillRect(LEFT,EDGE,RIGHT-LEFT,68);
- ctx.fillStyle='#527052';ctx.fillRect(LEFT-12,62,12,EDGE-62);ctx.fillRect(RIGHT,62,12,EDGE-62);
- ctx.fillStyle='#829977';ctx.fillRect(LEFT-3,62,3,EDGE-62);ctx.fillRect(RIGHT,62,3,EDGE-62);
- ctx.fillStyle='#344f39';ctx.fillRect(LEFT,62,RIGHT-LEFT,pusherY-62);
- ctx.fillStyle='#738c70';ctx.fillRect(110,72,12,Math.max(0,pusherY-90));ctx.fillRect(338,72,12,Math.max(0,pusherY-90));
- ctx.fillStyle='#9cbaa0';ctx.fillRect(LEFT,pusherY-24,RIGHT-LEFT,24);
- ctx.fillStyle='#d0dfb5';ctx.fillRect(LEFT,pusherY-4,RIGHT-LEFT,4);
- ctx.fillStyle='#a8ba9b';ctx.font='10px sans-serif';ctx.fillText('DROP ZONE / PUSH ↓',230,35);
- ctx.fillStyle='#afc58c';ctx.fillRect(LEFT,EDGE,RIGHT-LEFT,3);
- ctx.strokeStyle='#506b45';ctx.setLineDash([4,6]);ctx.beginPath();ctx.moveTo(LEFT+8,EDGE+35);ctx.lineTo(RIGHT-8,EDGE+35);ctx.stroke();ctx.setLineDash([]);
- ctx.fillStyle='#bed09f';ctx.font='10px sans-serif';ctx.fillText('↓ COLLECTION TRAY ↓',230,531);
- for(const c of coins){
+function drawCoin(c) {
   ctx.save();
-  if(c.lift>0){ctx.fillStyle='#0005';ctx.beginPath();ctx.ellipse(c.x,c.y,R,R*.65,0,0,Math.PI*2);ctx.fill();}
-  ctx.translate(c.x,c.y-c.lift);ctx.rotate(c.angle);
-  if(c.falling){const scale=Math.max(.3,1-(c.y-EDGE)/100);ctx.scale(scale,scale);ctx.globalAlpha=Math.max(0,1-(c.y-EDGE)/90);}
-  ctx.shadowColor='#0006';ctx.shadowBlur=3;ctx.shadowOffsetY=2;
-  ctx.fillStyle='#e6b74f';ctx.beginPath();ctx.arc(0,0,R,0,Math.PI*2);ctx.fill();ctx.shadowColor='transparent';ctx.strokeStyle='#ffe49a';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(0,0,R-2,0,Math.PI*2);ctx.stroke();ctx.fillStyle='#a77629';ctx.font='bold 10px sans-serif';ctx.fillText('1',0,3.5);ctx.restore();
- }
- for(const p of particles){ctx.globalAlpha=p.life;ctx.fillStyle='#ffe09a';ctx.font='bold 17px sans-serif';ctx.fillText('+1',p.x,p.y);}ctx.globalAlpha=1;
+  const altitude = Math.max(0, c.z);
+  ctx.fillStyle = '#0004'; ctx.beginPath(); ctx.ellipse(c.x + 3, c.y + 3, R, R * .8, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.translate(c.x, c.y - altitude * .38);
+  if (c.falling) {
+    const scale = Math.max(.3, 1 + c.z / 100); ctx.scale(scale, scale); ctx.globalAlpha = Math.max(0, 1 + c.z / 80);
+  }
+  // A dark rim and offset face distinguish overlapping quarters from flat coins.
+  ctx.fillStyle = '#926b32'; ctx.beginPath(); ctx.arc(0, 3, R, 0, Math.PI * 2); ctx.fill();
+  ctx.rotate(c.angle); ctx.shadowColor = '#0008'; ctx.shadowBlur = 4; ctx.shadowOffsetY = 3;
+  ctx.fillStyle = '#e6bd62'; ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.fill(); ctx.shadowColor = 'transparent';
+  ctx.strokeStyle = '#ffe7a4'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(0, 0, R - 2, 0, Math.PI * 2); ctx.stroke();
+  ctx.fillStyle = '#956c30'; ctx.font = 'bold 9px sans-serif'; ctx.fillText('25', 0, 3.5); ctx.restore();
 }
-function frame(now){
- if(lastTime!==null)accumulator+=Math.min((now-lastTime)/1000,.05);lastTime=now;
- while(accumulator>=STEP){simulate(STEP);accumulator-=STEP;}draw();requestAnimationFrame(frame);
+function draw() {
+  ctx.clearRect(0, 0, 460, 540); ctx.textAlign = 'center';
+  ctx.fillStyle = '#253a29';
+  for (let x = 25; x < 460; x += 25) for (let y = 20; y < 540; y += 25) ctx.fillRect(x, y, 1, 1);
+  ctx.fillStyle = '#21392a'; ctx.fillRect(LEFT, 62, RIGHT - LEFT, EDGE - 62);
+  ctx.strokeStyle = '#2c4832'; ctx.lineWidth = 1;
+  for (let x = LEFT + 20; x < RIGHT; x += 24) { ctx.beginPath(); ctx.moveTo(x, 65); ctx.lineTo(x, EDGE); ctx.stroke(); }
+  ctx.fillStyle = '#101e16'; ctx.fillRect(LEFT, EDGE, RIGHT - LEFT, 68);
+  ctx.fillStyle = '#527052'; ctx.fillRect(LEFT - 12, 62, 12, EDGE - 62); ctx.fillRect(RIGHT, 62, 12, EDGE - 62);
+  ctx.fillStyle = '#829977'; ctx.fillRect(LEFT - 3, 62, 3, EDGE - 62); ctx.fillRect(RIGHT, 62, 3, EDGE - 62);
+  ctx.fillStyle = '#1a2c20'; ctx.fillRect(LEFT, 62, RIGHT - LEFT, 60);
+  ctx.fillStyle = '#738c70'; ctx.fillRect(110, 72, 12, 80); ctx.fillRect(338, 72, 12, 80);
+  // Draw lower coins behind the raised shelf so its front face occludes them.
+  const sorted = coins.slice().sort((a, b) => a.z - b.z || a.y - b.y);
+  for (const c of sorted) if (c.z < SHELF_HEIGHT - 1) drawCoin(c);
+  ctx.fillStyle = '#0a140c80'; ctx.fillRect(LEFT, pusherY - 10, RIGHT - LEFT, 22);
+  ctx.fillStyle = '#63825f'; ctx.fillRect(LEFT, pusherY - 130 - 12, RIGHT - LEFT, 130);
+  ctx.fillStyle = '#8fab83'; ctx.fillRect(LEFT, pusherY - 130 - 12, RIGHT - LEFT, 5);
+  ctx.fillStyle = '#395a3e'; ctx.fillRect(LEFT, pusherY - 12, RIGHT - LEFT, 12);
+  ctx.fillStyle = '#d0dfb5'; ctx.fillRect(LEFT, pusherY - 14, RIGHT - LEFT, 3);
+  ctx.fillStyle = '#d1dfbb'; ctx.font = '9px sans-serif'; ctx.fillText('UPPER SHELF  ↓', 230, pusherY - 111);
+  for (const c of sorted) if (c.z >= SHELF_HEIGHT - 1) drawCoin(c);
+  ctx.fillStyle = '#a8ba9b'; ctx.font = '10px sans-serif'; ctx.fillText('TWO LEVELS / DROP · STACK · PUSH', 230, 35);
+  ctx.save(); ctx.translate(30, 365); ctx.rotate(-Math.PI / 2); ctx.font = '9px sans-serif'; ctx.fillText('LOWER DECK', 0, 0); ctx.restore();
+  ctx.fillStyle = '#afc58c'; ctx.fillRect(LEFT, EDGE, RIGHT - LEFT, 3);
+  ctx.strokeStyle = '#506b45'; ctx.setLineDash([4, 6]); ctx.beginPath(); ctx.moveTo(LEFT + 8, EDGE + 35); ctx.lineTo(RIGHT - 8, EDGE + 35); ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle = '#bed09f'; ctx.font = '10px sans-serif'; ctx.fillText('↓ COLLECTION TRAY ↓', 230, 531);
+  for (const p of particles) { ctx.globalAlpha = p.life; ctx.fillStyle = '#ffe09a'; ctx.font = 'bold 17px sans-serif'; ctx.fillText('+1', p.x, p.y); }
+  ctx.globalAlpha = 1;
 }
-document.getElementById('drop').addEventListener('click',drop);
-document.getElementById('reset').addEventListener('click',reset);
-document.addEventListener('visibilitychange',()=>{lastTime=null;accumulator=0;});
-reset();requestAnimationFrame(frame);
+function frame(now) {
+  if (lastTime !== null) accumulator += Math.min((now - lastTime) / 1000, .05);
+  lastTime = now;
+  while (accumulator >= STEP) { simulate(STEP); accumulator -= STEP; }
+  draw(); requestAnimationFrame(frame);
+}
+document.getElementById('drop').addEventListener('click', drop);
+document.getElementById('reset').addEventListener('click', reset);
+document.addEventListener('visibilitychange', () => { lastTime = null; accumulator = 0; });
+reset(); requestAnimationFrame(frame);
 </script>
 </body>
 </html>

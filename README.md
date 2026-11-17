@@ -17,8 +17,10 @@ and open `http://localhost:8000`.
 ## Implementation
 
 Canvas rendering uses requestAnimationFrame and fixed 120 Hz physics steps.
-Coins fall onto the deck, collide, and slide with friction. Coins that cross the
-front lip fall into the collection tray under gravity. The mechanical
+A raised moving shelf feeds a lower deck. Quarters have height and thickness,
+fall under gravity, land on other quarters, and form overlapping stacks.
+The shelf carries upper coins and pushes lower piles with its front face.
+Coins that cross the lower front lip fall into the collection tray. The mechanical
 pusher oscillates continuously. Active coins are capped at 180 to bound mobile
 CPU use; elapsed time is discarded when returning from a hidden tab.
 Native buttons support touch, mouse, and keyboard input.
