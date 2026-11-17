@@ -2,7 +2,7 @@
 const COMBAT_CONFIG = {
   sword: { damage: 1, reach: 13, hitCooldown: .4 },
   player: { hearts: 3, invulnerability: 1, knockbackSpeed: 105, knockbackTime: .16 },
-  slime: { health: 2, damage: 1, speed: 77.5, radius: 15, height: 32, recoilSpeed: 95, recoilTime: .18 },
+  slime: { health: 2, damage: 1, speed: 77.5, radius: 15, height: 32, recoilSpeed: 160, recoilTime: .22 },
 };
 const overlaps = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
 

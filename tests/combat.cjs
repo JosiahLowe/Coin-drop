@@ -64,7 +64,7 @@ const path=require('node:path');
     fresh();dungeon.facing=-1;combat.enemies[0].x=dungeon.x-30;combat.update(STEP);
     check(combat.enemies[0].hp===1&&combat.swordBox().x<dungeon.x,'Left sword');
     // Idle knight can defeat an approaching enemy without taking damage.
-    combat.restart();const idleEnemy=combat.enemies[0];tick(2);check(idleEnemy.defeated&&combat.health.hearts===3,'Idle sword defense');
+    combat.restart();const idleEnemy=combat.enemies[0];tick(2.5);check(idleEnemy.defeated&&combat.health.hearts===3,'Idle sword defense');
     // Death stops inputs, dropping, movement and spawning, but not the machine.
     fresh();for(let i=0;i<3;i++){combat.health.invulnerable=0;combat.enemies[0].x=dungeon.x-5;combat.update(STEP);}
     check(combat.health.dead&&dungeon.disabled,'Death state');
