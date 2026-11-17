@@ -32,6 +32,11 @@ base through shelf motion and contact pushes; the top coin can still be dislodge
 The same supported weight affects edge balance: rear weight can pin an
 overhang, while forward weight can tip it. Removing or shifting a counterweight
 releases the coin into a short tipping animation and then gravity.
+A forward stroke that contacts the lower pile can produce one brief mechanical
+bump. It travels through touching coins to the front edge and jolts the upper
+lip above the contact columns. Edge coins can fall, and upper coins can tumble
+onto the lower stacks; heavier piles resist the impulse. Disconnected coins
+stay still, and the return stroke does not trigger a bump.
 Dry friction stops loose coins, and resting stacks have no automatic drift.
 Coins that cross the lower front lip fall into the collection tray. The mechanical
 pusher oscillates continuously. Active coins are capped at 180 to bound mobile

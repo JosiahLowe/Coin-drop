@@ -45,6 +45,7 @@ const R = 14, THICKNESS = 5, SHELF_HEIGHT = 30, MAX_STACK = 3;
 const EDGE = 445, LEFT = 49, RIGHT = 411, BACK = 110, STEP = 1 / 120;
 let coins = [], score = 0, used = 0, time = 0;
 let pusherY = 235, accumulator = 0, lastTime = null, particles = [];
+let bumpUsed = false, bumpFlash = 0;
 const pusherAt = t => 260 - 25 * Math.cos(t * 1.55);
 function coin(x, y, z = 0) {
   return { x, y, z, vx: 0, vy: 0, vz: 0, angle: Math.random() * Math.PI * 2, falling: false, tip: 0, pinned: false, load: 1, support: null, stackLevel: 0 };
@@ -52,6 +53,7 @@ function coin(x, y, z = 0) {
 function reset() {
   time = 0; pusherY = pusherAt(0); coins = []; particles = [];
   aimElement.value = '230'; updateAim();
+  bumpUsed = false; bumpFlash = 0;
   // Close-packed rows cover each playable deck, with a little clearance so
   // the starting quarters do not intersect each other or the side rails.
   const spacing = R * 2 + .5;
@@ -135,12 +137,45 @@ function edgeBalance(c, bodies, dt) {
   c.tip = Math.min(1, c.tip + dt / .24);
   return c.tip < 1 ? height : null;
 }
+// Transmit one short mechanical jolt through a touching lower pile, rather
+// than shaking disconnected coins or applying a free payout on every stroke.
+function forwardBump(contacts, speed) {
+  if (!contacts.size) return false;
+  const connected = new Set(contacts), queue = [...contacts];
+  const lower = coins.filter(c => !c.falling && c.z < SHELF_HEIGHT - 1 && Math.abs(c.vz) < 1);
+  for (let i = 0; i < queue.length; i++) {
+    const a = queue[i];
+    for (const b of lower) {
+      if (connected.has(b) || Math.abs(a.z - b.z) >= THICKNESS) continue;
+      if (Math.hypot(a.x - b.x, a.y - b.y) <= R * 2 + 2) {
+        connected.add(b); queue.push(b);
+      }
+    }
+  }
+  const strength = Math.min(1, speed / 38.75);
+  for (const c of coins) {
+    if (c.falling || Math.abs(c.vz) > 1) continue;
+    const upperEdge = c.z >= SHELF_HEIGHT && c.y > pusherY - R * 2 && c.y < pusherY + R;
+    const lowerEdge = connected.has(c) && c.y >= EDGE - R * 2;
+    if (!upperEdge && !lowerEdge) continue;
+    // The returning load also jolts the upper lip, above the contact columns.
+    if (upperEdge && !queue.some(b => Math.abs(b.x - c.x) < R * 2)) continue;
+    const lane = .65 + .35 * Math.abs(Math.sin(c.x * .047 + Math.floor(time / 4.05) * 1.37));
+    const impulse = (upperEdge ? 110 : 85) * strength * lane / Math.sqrt(c.load);
+    c.vy += impulse;
+  }
+  bumpFlash = 1;
+  return true;
+}
 function simulate(dt) {
   updateStackLoads();
   time += dt;
   const previousShelfY = pusherY;
   const next = pusherAt(time), delta = next - pusherY, speed = delta / dt;
   pusherY = next;
+  if (speed <= 0) bumpUsed = false;
+  bumpFlash = Math.max(0, bumpFlash - dt * 7);
+  const faceContacts = new Set();
   for (const c of coins) {
     // Test contact against the previous shelf position, then carry the coin
     // by the full displacement in BOTH directions before checking support.
@@ -222,7 +257,8 @@ function simulate(dt) {
       if (c.x < LEFT + R) { c.x = LEFT + R; c.vx = Math.max(0, c.vx); }
       if (c.x > RIGHT - R) { c.x = RIGHT - R; c.vx = Math.min(0, c.vx); }
       if (c.z < SHELF_HEIGHT - 1 && c.y - R < pusherY) {
-        // The shelf's front face shoves the lower pile on its forward stroke.
+        // Only actual face contact during a forward stroke can trigger a bump.
+        if (speed > 0 && Math.abs(c.vz) < 1) faceContacts.add(c);
         c.y = pusherY + R; c.vy = Math.max(c.vy, speed);
       }
       if (c.z >= SHELF_HEIGHT - 1 && c.y - R < BACK) {
@@ -238,6 +274,7 @@ function simulate(dt) {
     c.y += c.support.y - c.support.contactY;
     c.vx = c.support.vx; c.vy = c.support.vy;
   }
+  if (!bumpUsed && speed >= 28 && forwardBump(faceContacts, speed)) bumpUsed = true;
   coins = coins.filter(c => {
     if (c.falling && (c.z < -65 || c.y > 510)) {
       score++; scoreElement.textContent = score;
@@ -294,7 +331,7 @@ function draw() {
   ctx.strokeStyle = '#ecca7280'; ctx.setLineDash([3, 4]);
   ctx.beginPath(); ctx.moveTo(dropX, BACK - 18); ctx.lineTo(dropX, BACK + R + 6 - SHELF_HEIGHT * .38); ctx.stroke(); ctx.setLineDash([]);
   ctx.fillStyle = '#395a3e'; ctx.fillRect(LEFT, pusherY - 12, RIGHT - LEFT, 12);
-  ctx.fillStyle = '#d0dfb5'; ctx.fillRect(LEFT, pusherY - 14, RIGHT - LEFT, 3);
+  ctx.fillStyle = bumpFlash > 0 ? '#f5d583' : '#d0dfb5'; ctx.fillRect(LEFT, pusherY - 14, RIGHT - LEFT, 3);
   ctx.fillStyle = '#d1dfbb'; ctx.font = '9px sans-serif'; ctx.fillText('DROP AT THE BACK', 230, BACK - 42);
   for (const c of sorted) if (c.z >= SHELF_HEIGHT - 1) drawCoin(c);
   ctx.fillStyle = '#a8ba9b'; ctx.font = '10px sans-serif'; ctx.fillText(speedLabel(), 230, 35);
