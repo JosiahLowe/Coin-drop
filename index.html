@@ -41,13 +41,13 @@ function updateAim() {
   aimElement.setAttribute('aria-valuetext', percent === 50 ? 'Center' : percent + '% from left');
 }
 aimElement.addEventListener('input', updateAim);
-const R = 14, THICKNESS = 5, SHELF_HEIGHT = 30;
+const R = 14, THICKNESS = 5, SHELF_HEIGHT = 30, MAX_STACK = 3;
 const EDGE = 445, LEFT = 49, RIGHT = 411, BACK = 110, STEP = 1 / 120;
 let coins = [], score = 0, used = 0, time = 0;
 let pusherY = 235, accumulator = 0, lastTime = null, particles = [];
 const pusherAt = t => 260 - 25 * Math.cos(t * 1.55);
 function coin(x, y, z = 0) {
-  return { x, y, z, vx: 0, vy: 0, vz: 0, angle: Math.random() * Math.PI * 2, falling: false, tip: 0, pinned: false };
+  return { x, y, z, vx: 0, vy: 0, vz: 0, angle: Math.random() * Math.PI * 2, falling: false, tip: 0, pinned: false, load: 1, support: null, stackLevel: 0 };
 }
 function reset() {
   time = 0; pusherY = pusherAt(0); coins = []; particles = [];
@@ -66,10 +66,11 @@ function reset() {
   }
   fillSurface(BACK + R, pusherY - R * .75, SHELF_HEIGHT);
   fillSurface(pusherY + R + .5, EDGE - R, 0);
-  // A few overlapping quarters keep both dense decks visibly layered.
-  for (const i of [14, 33, 51, 73, 92, 110, 128, 145]) {
+  // Three-high piles on both decks demonstrate the added stack weight.
+  for (const i of [14, 33, 73, 110]) {
     const base = coins[i];
     coins.push(coin(base.x + 6, base.y + 3, base.z + THICKNESS));
+    coins.push(coin(base.x + 10, base.y, base.z + THICKNESS * 2));
   }
   score = 0; used = 0; accumulator = 0;
   scoreElement.textContent = '0'; usedElement.textContent = '0';
@@ -85,6 +86,27 @@ function surfaceAt(c) {
   if (c.y <= pusherY && c.y >= BACK) return SHELF_HEIGHT;
   return 0;
 }
+// Build a bottom-to-top support tree. Every coin weighs one unit; the
+// bottom quarter carries the total load of all quarters resting above it.
+function updateStackLoads() {
+  const ordered = coins.slice().sort((a, b) => a.z - b.z);
+  for (const c of ordered) {
+    c.support = null; c.load = 1; c.stackLevel = 0;
+    if (c.falling || Math.abs(c.vz) > 1) continue;
+    let closest = Infinity;
+    for (const b of ordered) {
+      if (b === c || b.falling || Math.abs(b.vz) > 1 || b.stackLevel >= MAX_STACK - 1) continue;
+      if (Math.abs(c.z - b.z - THICKNESS) > .6) continue;
+      const distance = Math.hypot(c.x - b.x, c.y - b.y);
+      if (distance < R * 1.25 && distance < closest) { c.support = b; closest = distance; }
+    }
+    if (c.support) c.stackLevel = c.support.stackLevel + 1;
+  }
+  for (let i = ordered.length - 1; i >= 0; i--) {
+    const c = ordered[i];
+    if (c.support) c.support.load += c.load;
+  }
+}
 // Approximate disc balance: the rim can support an overhang when a quarter
 // resting on its rear half puts the combined center of mass behind the lip.
 function edgeBalance(c, bodies, dt) {
@@ -95,8 +117,11 @@ function edgeBalance(c, bodies, dt) {
   let weight = 1, moment = c.y - lip;
   for (const b of bodies) {
     if (b === c || b.falling || Math.abs(b.previousVz) > 1) continue;
-    if (Math.abs(b.previousZ - (height + THICKNESS)) > .6) continue;
-    if (Math.hypot(b.x - c.x, b.y - c.y) >= R * 1.25 || b.y >= lip) continue;
+    // Include the full supported stack, including a third quarter. Forward
+    // weight can destabilize an overhang just as rear weight can hold it.
+    let parent = b.support;
+    while (parent && parent !== c) parent = parent.support;
+    if (parent !== c) continue;
     weight++; moment += b.y - lip;
   }
   const pinned = weight > 1 && moment / weight <= -.5;
@@ -111,6 +136,7 @@ function edgeBalance(c, bodies, dt) {
   return c.tip < 1 ? height : null;
 }
 function simulate(dt) {
+  updateStackLoads();
   time += dt;
   const previousShelfY = pusherY;
   const next = pusherAt(time), delta = next - pusherY, speed = delta / dt;
@@ -127,7 +153,7 @@ function simulate(dt) {
     }
     // Dry friction stops coins decisively instead of letting them coast forever.
     const velocity = Math.hypot(c.vx, c.vy);
-    const friction = grounded ? 220 : 8;
+    const friction = grounded ? 220 * (1 + .4 * (c.load - 1)) : 8;
     const drag = velocity > 0 ? Math.max(0, 1 - friction * dt / velocity) : 0;
     c.vx *= drag; c.vy *= drag;
     c.x += c.vx * dt; c.y += c.vy * dt; c.angle += c.vx * dt / R;
@@ -146,13 +172,15 @@ function simulate(dt) {
     for (const b of ordered) {
       if (b === c || b.falling || b.vz < -1) continue;
       const top = b.z + THICKNESS;
-      // Small stacks are stable; taller arrivals tip off and resolve sideways.
-      const floor = b.pinned ? b.z : surfaceAt(b);
-      if (top > floor + THICKNESS || top > c.previousZ + .6 || top < support) continue;
+      // Up to three quarters may rest in one vertical chain. A fourth
+      // arrival resolves sideways and can form a neighboring stack.
+      if (b.stackLevel >= MAX_STACK - 1 || top > c.previousZ + .6 || top < support) continue;
       if ((b.x - c.x) ** 2 + (b.y - c.y) ** 2 < (R * 1.25) ** 2) { support = top; carrier = b; }
     }
     if (c.z <= support) {
       c.z = support; c.vz = 0;
+      c.support = carrier;
+      c.stackLevel = carrier ? carrier.stackLevel + 1 : 0;
       if (edge === null) c.tip = 0;
       if (carrier) {
         c.tip = 0;
@@ -164,6 +192,8 @@ function simulate(dt) {
     }
     if (c.y > EDGE - R && c.z < -1) { c.falling = true; c.vy = Math.max(c.vy, 35); }
   }
+  updateStackLoads();
+  for (const c of coins) { c.contactX = c.x; c.contactY = c.y; }
   for (let iteration = 0; iteration < 7; iteration++) {
     for (let i = 0; i < coins.length; i++) {
       const a = coins[i]; if (a.falling) continue;
@@ -174,12 +204,16 @@ function simulate(dt) {
         if (Math.abs(dx) >= 2 * R || Math.abs(dy) >= 2 * R) continue;
         const distance = Math.hypot(dx, dy); if (distance >= 2 * R) continue;
         const nx = distance > .001 ? dx / distance : 1, ny = distance > .001 ? dy / distance : 0;
-        const overlap = (2 * R - distance) * .5;
-        a.x -= nx * overlap; a.y -= ny * overlap; b.x += nx * overlap; b.y += ny * overlap;
+        // The same shove displaces a loaded stack less than a single coin.
+        const invA = 1 / a.load, invB = 1 / b.load, invTotal = invA + invB;
+        const overlap = 2 * R - distance;
+        a.x -= nx * overlap * invA / invTotal; a.y -= ny * overlap * invA / invTotal;
+        b.x += nx * overlap * invB / invTotal; b.y += ny * overlap * invB / invTotal;
         const relative = (b.vx - a.vx) * nx + (b.vy - a.vy) * ny;
         if (relative < 0) {
-          const impulse = -relative * .5;
-          a.vx -= impulse * nx; a.vy -= impulse * ny; b.vx += impulse * nx; b.vy += impulse * ny;
+          const impulse = -relative / invTotal;
+          a.vx -= impulse * nx * invA; a.vy -= impulse * ny * invA;
+          b.vx += impulse * nx * invB; b.vy += impulse * ny * invB;
         }
       }
     }
@@ -195,6 +229,14 @@ function simulate(dt) {
         c.y = BACK + R; c.vy = Math.max(c.vy, 0);
       }
     }
+  }
+  // A base displaced by contact carries its resting layers with it. Resolve
+  // bottom first so a three-high pile stays together through the shove.
+  for (const c of ordered) {
+    if (!c.support || c.falling) continue;
+    c.x += c.support.x - c.support.contactX;
+    c.y += c.support.y - c.support.contactY;
+    c.vx = c.support.vx; c.vy = c.support.vy;
   }
   coins = coins.filter(c => {
     if (c.falling && (c.z < -65 || c.y > 510)) {

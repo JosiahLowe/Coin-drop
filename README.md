@@ -25,14 +25,14 @@ Drops enter through a fixed rear slot. Resting coins grip the upper shelf
 through both strokes. The fixed back wall compresses a crowded pile as the
 shelf returns, while the forward face pushes the lower pile. Coins tumble
 onto the lower deck only when contact pushes them past the shelf lip.
-Quarters can overhang either lip. A quarter pressing on the rear half can pin
-an overhang when their combined center of mass stays over the deck. Removing
-that weight or pushing the pile too far makes the coin tip and fall. This is
-a simplified balance model, with a visible tipping animation.
+Stacks can be three quarters high. Each quarter adds one unit of weight to
+its support chain. Collision impulses and separation use this combined mass,
+and loaded bases have more sliding resistance. Resting layers follow their
+base through shelf motion and contact pushes; the top coin can still be dislodged.
+The same supported weight affects edge balance: rear weight can pin an
+overhang, while forward weight can tip it. Removing or shifting a counterweight
+releases the coin into a short tipping animation and then gravity.
 Dry friction stops loose coins, and resting stacks have no automatic drift.
-A simplified balance model lets a quarter overhang either lip when another
-quarter weights its rear half. Removing or shifting that counterweight releases
-the overhang; unsupported quarters briefly tip before falling under gravity.
 Coins that cross the lower front lip fall into the collection tray. The mechanical
 pusher oscillates continuously. Active coins are capped at 180 to bound mobile
 CPU use; elapsed time is discarded when returning from a hidden tab.
