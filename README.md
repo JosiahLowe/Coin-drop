@@ -8,7 +8,8 @@ No dependencies, external assets, or build step.
 Open `index.html` in a modern browser, including Safari on iPhone. Play starts
 automatically. Tap **Drop Coin** to add a coin. Every coin that falls over the
 bottom edge into the collection area earns one point. Tap **↺** to reset the
-score and restore the starting pile of 55 coins. Coins are free.
+score and Used counter and restore the starting pile of 55 coins. The Used
+counter tracks tokens you drop, excluding the starting pile. Coins are free.
 
 For local HTTP hosting, run `python3 -m http.server 8000` in this directory
 and open `http://localhost:8000`.
