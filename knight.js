@@ -115,7 +115,7 @@ class DungeonWalkway {
     // Leave room for the extended sword as well as the knight's body.
     this.x = Math.max(this.left + 32, Math.min(this.right - 32, this.x + direction * 155 * dt));
     this.moving = this.x !== previousX;
-    if (this.jumpQueued && this.y === this.floor) this.vy = -285;
+    if (this.jumpQueued && this.y === this.floor) this.vy = -310;
     this.jumpQueued = false;
     this.vy += 800 * dt; this.y += this.vy * dt;
     if (this.y >= this.floor) { this.y = this.floor; this.vy = 0; }

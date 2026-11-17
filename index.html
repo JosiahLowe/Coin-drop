@@ -14,15 +14,15 @@ header{margin-bottom:4px}h1{font-size:26px;margin:2px 0}.stats{padding-bottom:6p
 .bar{padding:8px 12px}.hint{margin:8px 0;font-size:10px}footer{margin-top:8px}
 .dungeon{background:#15151d;border-bottom:2px solid #62616b}
 #dungeon{aspect-ratio:460/150}
-.knight-controls{margin-top:8px;border-radius:13px;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;display:flex;gap:8px;padding:6px 10.65%;background:#20202a}
-.knight-controls button{ -webkit-user-select:none;-webkit-touch-callout:none;min-height:44px;flex:1;background:#3d3d4b;color:#f1e4bd;touch-action:none;user-select:none;font-size:14px}
+.knight-controls{margin-top:8px;border-radius:13px;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;display:flex;gap:8px;padding:6px;background:#20202a}
+.knight-controls button{ -webkit-user-select:none;-webkit-touch-callout:none;min-height:58px;flex:1;background:#3d3d4b;color:#f1e4bd;touch-action:none;user-select:none;font-size:20px}
 .knight-controls *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 .knight-controls button[aria-pressed="true"]{background:#696077}
 .controls{margin-top:8px} .controls button{min-height:44px}
 @media(max-height:740px){main{max-width:350px}header{margin-bottom:4px}h1{font-size:26px}.hint{margin:6px 0}footer{margin-top:6px}}
 #hearts{color:#ed8c9b;letter-spacing:2px}#game-over:not([hidden]){display:flex;align-items:center;justify-content:space-between;margin-top:8px;color:#ffb5b5}#restart{min-height:44px;padding:0 20px;background:#ecca72}button:disabled{opacity:.45;cursor:default}
-.dungeon-hud{align-items:center;gap:6px;padding:7px 6px;letter-spacing:0;font-size:9px;min-height:32px}
-#wave-status{flex:1;min-width:50px;line-height:1.3}
+.dungeon-hud{align-items:center;gap:6px;padding:7px 6px;letter-spacing:0;font-size:9px;height:40px;min-height:40px;overflow:hidden}
+#wave-status{flex:1;min-width:0;line-height:12px;height:24px;overflow:hidden}
 .hud-counter{display:flex;align-items:center;gap:3px;white-space:nowrap;font-size:8px}
 .hud-counter output{display:inline;font-size:12px}
 .dungeon-hud #hearts{font-size:11px;letter-spacing:0;white-space:nowrap}
@@ -41,8 +41,8 @@ header{margin-bottom:4px}h1{font-size:26px;margin:2px 0}.stats{padding-bottom:6p
 <footer><span>NO TOKENS REQUIRED</span><span>JUST ONE MORE DROP ↗</span></footer>
 </main>
 <script src="loot.js?v=loot-1"></script>
-<script src="knight.js?v=touch-flat-2"></script>
-<script src="waves.js?v=waves-1"></script>
+<script src="knight.js?v=tuning-1"></script>
+<script src="waves.js?v=tuning-1"></script>
 <script src="combat.js?v=waves-1"></script>
 <script>
 'use strict';
@@ -84,7 +84,7 @@ const combat = new DungeonCombat(dungeon, x => {
   if(machineReady)loot.observeWave(state.waves.wave);
   const waves = state.waves;
   const message = waves.state === 'quiet'
-    ? 'WAVE ' + waves.wave + ' COMPLETE · 0 LEFT · NEXT IN ' + Math.ceil(waves.timer) + 's'
+    ? 'W' + waves.wave + ' COMPLETE · ' + Math.ceil(waves.timer) + 's'
     : 'WAVE ' + waves.wave + ' · ' + waves.remaining + ' LEFT';
   const status = document.getElementById('wave-status');
   if (status.textContent !== message) status.textContent = message;
@@ -97,15 +97,16 @@ function reset() {
   time = 0; pusherY = pusherAt(0); coins = []; particles = []; pendingCoinDrops = []; loot.pending = [];
   updateAim();
   bumpUsed = false; bumpFlash = 0;
-  // Fill both decks with close-packed coins so pushes transmit through
-  // the pile immediately. Keep the existing size and row spacing.
+  // Leave one quarter of the grid empty to relieve initial pile pressure.
   const spacing = R * 2 + .5;
   const rowSpacing = spacing * Math.sqrt(3) / 2;
   function fillSurface(firstY, lastY, z) {
     for (let row = 0, y = firstY; y <= lastY; row++, y += rowSpacing) {
       const offset = row % 2 ? spacing / 2 : 0;
+      let column=0;
       for (let x = LEFT + R + offset; x <= RIGHT - R; x += spacing) {
-        coins.push(coin(x, y, z));
+        const leaveLootPocket=z===0 && Math.hypot(x-230,y-(EDGE-24))<40;
+        if((row+column++)%4!==0 && !leaveLootPocket)coins.push(coin(x, y, z));
       }
     }
   }

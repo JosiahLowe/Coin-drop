@@ -13,7 +13,7 @@ Enemy deaths do not award wallet coins. Machine collections add one coin to the
 existing COINS balance, which starts at zero. Stored coins are not spendable in Phase 5A. The existing manual-drop code
 is retained behind a disabled flag, and its button is hidden.
 
-Tap **↺** to refill the machine with 124 coins in close-packed rows and two small stacks,
+Tap **↺** to refill the machine with 90 coins in partly filled rows with clearance around the initial potion and two small stacks,
 clear queued feeds and physical loot, and reset COINS and USED to zero. USED counts coins fed into
 the machine from either source, excluding the starting pile. This machine reset
 does not reset combat. The GAME OVER Restart button resets combat and waves only.
@@ -61,7 +61,7 @@ The separate ↺ button still resets the machine and balance to zero.
 ## Enemy waves (Phase 4)
 
 Waves contain 3, 4, 5, 6, and 7 slimes initially, increasing by one per wave to
-a maximum of 12. Enemies enter sequentially at two-second intervals, alternating
+a maximum of 12. Enemies enter sequentially at three-second intervals, alternating
 sides where possible and choosing the far edge if the knight is too close.
 Remaining enemies includes those not yet spawned. A wave completes only when
 all scheduled enemies have spawned and been defeated.
@@ -167,3 +167,8 @@ Coins that cross the lower front lip fall into the collection tray. The mechanic
 pusher oscillates continuously. Active coins are capped at 180 to bound mobile
 CPU use; elapsed time is discarded when returning from a hidden tab.
 Native buttons support touch, mouse, and keyboard input.
+
+Movement buttons are 58px tall and use nearly the full available width.
+The knight jumps about 18% higher; slime spawns are three seconds apart.
+The wave HUD reserves a fixed height so quiet-period text cannot shift controls.
+Run `node tests/tuning.cjs` to verify initial potion settling and HUD stability.

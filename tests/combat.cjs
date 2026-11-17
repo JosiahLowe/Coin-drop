@@ -34,7 +34,7 @@ const path=require('node:path');
     check(combat.enemies[0].hp===1,'Continuous contact bypassed cooldown');
     const count=coins.length,balance=score;tick(.12);
     check(!combat.enemies[0]&&score===balance&&coins.length===count+1,'Exactly one physical coin and no wallet reward');
-    tick(1.5);check(!combat.enemies[0],'Spawn too early');tick(.1);check(combat.enemies[0],'Respawn missing');
+    tick(2.5);check(!combat.enemies[0],'Spawn too early');tick(.1);check(combat.enemies[0],'Respawn missing');
     check(combat.enemies[0].x<dungeon.x,'Alternating spawn side');
     // Crossing overhead does not reverse pursuit until the knight lands.
     for(const direction of [-1,1]){
@@ -49,7 +49,7 @@ const path=require('node:path');
     }
     // A full moving jump clears a slime without it turning underneath us.
     combat.restart();combat.enemies[0].x=310;dungeon.keys.add('KeyD');dungeon.jumpQueued=true;
-    tick(.75,true);dungeon.clearInput();
+    tick(.85,true);dungeon.clearInput();
     check(dungeon.y===dungeon.floor&&combat.health.hearts===3,'Jump-over caused body damage');
     check(dungeon.x>combat.enemies[0].x,'Jump did not clear slime');
     // Behind body contact damages the player, then invulnerability blocks it.

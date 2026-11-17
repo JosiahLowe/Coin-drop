@@ -1,5 +1,5 @@
 'use strict';
-const WAVE_CONFIG = { firstCount: 3, maxCount: 12, spawnInterval: 2, quietDuration: 10 };
+const WAVE_CONFIG = { firstCount: 3, maxCount: 12, spawnInterval: 3, quietDuration: 10 };
 
 // Scheduling only: enemy behavior, damage, and coin rewards belong elsewhere.
 class WaveManager {

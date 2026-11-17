@@ -31,9 +31,9 @@ const fs=require('node:fs');const path=require('node:path');const assert=require
    // Count scheduled enemies even when no active slimes remain.
    reset();combat.restart();kill(combat.enemies[0]);
    check(combat.waves.remaining===2&&combat.waves.state==='active','Wave completed before scheduled spawns');
-   tick(1.9);check(combat.enemies.length===0,'Spawn interval too short');tick(.1);
+   tick(2.9);check(combat.enemies.length===0,'Spawn interval too short');tick(.1);
    check(combat.enemies.length===1&&combat.waves.spawned===2,'Second spawn timing');kill(combat.enemies[0]);
-   tick(2);check(combat.waves.spawned===3,'Third spawn count');kill(combat.enemies[0]);
+   tick(3);check(combat.waves.spawned===3,'Third spawn count');kill(combat.enemies[0]);
    check(combat.waves.state==='quiet'&&combat.waves.timer===10,'Missing ten second quiet period');
    combat.update(0);check(document.querySelector('#wave-status').textContent.includes('COMPLETE'),'Wave complete interface');
    const quietWallet=score,quietCoinCount=coins.length;
@@ -47,7 +47,7 @@ const fs=require('node:fs');const path=require('node:path');const assert=require
    const waves=new WaveManager(),counts=[];let totalSpawned=0;
    for(let wave=1;wave<=20;wave++){
     const sides=[];waves.update(0,side=>{sides.push(side);totalSpawned++;});
-    for(let i=1;i<waves.total;i++)waves.update(2,side=>{sides.push(side);totalSpawned++;});
+    for(let i=1;i<waves.total;i++)waves.update(3,side=>{sides.push(side);totalSpawned++;});
     counts.push(waves.spawned);check(sides.every((side,i)=>!i||side!==sides[i-1]),'Spawn sides do not alternate');
     for(let i=0;i<waves.total;i++)waves.defeatedEnemy();
     check(waves.state==='quiet'&&waves.remaining===0,'Scheduled count/death completion');
@@ -64,7 +64,7 @@ const fs=require('node:fs');const path=require('node:path');const assert=require
    const waveSnapshot=JSON.stringify(combat.waves),enemySnapshot=JSON.stringify(combat.enemies);
    combat.update(30);check(JSON.stringify(combat.waves)===waveSnapshot&&JSON.stringify(combat.enemies)===enemySnapshot,'Dead timers or movement advanced');
    const machine=JSON.stringify(coins),motion=time,balance=score;combat.restart();
-   check(combat.waves.wave===1&&combat.waves.spawned===1&&combat.waves.timer===2&&combat.enemies.length===1&&combat.health.hearts===3,'Restart waves');
+   check(combat.waves.wave===1&&combat.waves.spawned===1&&combat.waves.timer===3&&combat.enemies.length===1&&combat.health.hearts===3,'Restart waves');
    check(JSON.stringify(coins)===machine&&time===motion&&score===balance,'Restart reset machine');
    // Existing manual drop remains paid; empty balances cannot spawn freely.
    reset();combat.restart();const count=coins.length;for(let i=0;i<10;i++)drop();
