@@ -86,7 +86,9 @@ is full. There are no additional enemy types, equipment effects, or progression.
 
 The configurable schedule in `loot.js` feeds a Health Potion on Wave 1, Iron
 Sword on Wave 3, Leather Armor on Wave 5, Treasure Chest on Wave 7, and Rusty
-Key on Wave 9. They enter through the rear slot from above and use the same
+Key on Wave 9. For testing, they drop from a height of 15 onto the lower deck, one item
+radius plus six units behind the collection edge. They still need pushing to
+fall off and be collected. They use the same
 body list, gravity, shelf attachment, stacking, contact solver, tipping, and
 collection edge as coins. `LOOT_TYPES` defines icon width/height, mass, friction,
 color, and the supported circular collision shape. Each enclosing disc is

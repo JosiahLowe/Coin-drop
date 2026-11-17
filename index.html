@@ -147,7 +147,7 @@ function flushLootDrops(){
   while(loot.pending.length&&coins.length<180){
     const spec=loot.pending.shift(),d=LOOT_TYPES[spec.type];
     const radius=Math.hypot(d.width,d.height)/2;
-    const body=coin(LEFT+radius+(RIGHT-LEFT-2*radius)*spec.lane,BACK+radius+6,SHELF_HEIGHT+85);
+    const body=coin(LEFT+radius+(RIGHT-LEFT-2*radius)*spec.lane,EDGE-radius-6,15);
     Object.assign(body,{loot:spec.type,id:spec.id,radius,mass:d.mass,resistance:d.friction});coins.push(body);
   }
 }

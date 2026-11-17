@@ -6,7 +6,7 @@ await page.route('http://coin.test/**',route=>{const f=new URL(route.request().u
 const result=await page.evaluate(()=>{
 const check=(ok,msg)=>{if(!ok)throw Error(msg);};
 check(coins.filter(c=>c.loot==='potion').length===1,'Initial potion entry');
-const initial=coins.find(c=>c.loot);check(initial.y===BACK+initial.radius+6&&initial.z===SHELF_HEIGHT+85,'Rear loot feed');
+const initial=coins.find(c=>c.loot);check(initial.y===EDGE-initial.radius-6&&initial.z===15&&initial.y>pusherY+initial.radius,'Lower-deck test feed');
 for(const wave of [1,3,5,7,9]){loot.observeWave(wave);loot.observeWave(wave);flushLootDrops();}
 check(coins.filter(c=>c.loot).length===5,'Schedule duplicate or missing loot');
 const ids=coins.filter(c=>c.loot).map(c=>c.id);combat.restart();combat.update(0);flushLootDrops();check(coins.filter(c=>c.loot).length===5,'Restart duplicates');
