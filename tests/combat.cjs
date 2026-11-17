@@ -1,0 +1,86 @@
+const {chromium}=require('playwright');
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+(async()=>{
+ const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||'/usr/bin/chromium',args:['--no-sandbox']});
+ try {
+  for(const viewport of [{width:1280,height:900},{width:390,height:844}]){
+   const page=await browser.newPage({viewport,hasTouch:viewport.width<500});const errors=[];page.on('pageerror',e=>errors.push(e.message));
+   await page.route('http://coin.test/**',route=>{const file=new URL(route.request().url()).pathname.slice(1)||'index.html';return route.fulfill({body:fs.readFileSync(path.join(__dirname,'..',file)),contentType:file.endsWith('.js')?'application/javascript':'text/html'});});
+   await page.addInitScript(()=>{window.requestAnimationFrame=()=>0;});await page.goto('http://coin.test/');
+   const result=await page.evaluate(()=>{
+    const check=(condition,message)=>{if(!condition)throw Error(message);};
+    const tick=(seconds,move=false)=>{for(let t=0;t<seconds-1e-8;t+=STEP){if(move)dungeon.update(STEP);combat.update(STEP);}};
+    const fresh=()=>{combat.restart();combat.enemy.config={...combat.enemy.config,speed:0};};
+    check(combat.enemy&&Math.abs(combat.enemy.x-dungeon.x)>110,'Initial spawn distance');
+    // Face right: sword overlaps the slime before the body does.
+    fresh();combat.enemy.x=dungeon.x+30;combat.update(STEP);
+    check(combat.enemy.hp===1&&combat.health.hearts===3,'Sword-first hit');
+    check(combat.swordBox().x>dungeon.x,'Right sword');
+    // Maintain contact, preventing recoil in this fixture to isolate cooldown.
+    combat.enemy.config.recoilSpeed=0;tick(.3);
+    check(combat.enemy.hp===1,'Continuous contact bypassed cooldown');
+    const count=coins.length,balance=score;tick(.12);
+    check(!combat.enemy&&score===balance+3&&coins.length===count,'Exactly three currency rewards, no machine coin spawn');
+    tick(2.8);check(!combat.enemy,'Spawn too early');tick(.25);check(combat.enemy,'Respawn missing');
+    check(combat.enemy.x<dungeon.x,'Alternating spawn side');
+    // Behind body contact damages the player, then invulnerability blocks it.
+    fresh();combat.enemy.x=dungeon.x-8;combat.update(STEP);
+    check(combat.health.hearts===2,'Rear body damage');
+    check(document.querySelector('#hearts').getAttribute('aria-label')==='2 of 3 hearts','Immediate heart update');
+    const x=dungeon.x;tick(.1);check(dungeon.x>x,'Knockback direction');
+    tick(.7);check(combat.health.hearts===2,'Invulnerability failed');
+    // A high jump avoids both body and sword contact.
+    fresh();combat.enemy.x=dungeon.x-5;dungeon.y=dungeon.floor-60;combat.update(STEP);check(combat.health.hearts===3&&combat.enemy.hp===2,'Jump overlap');
+    // Turning changes both sword sides immediately, with a valid left hit.
+    fresh();dungeon.facing=-1;combat.enemy.x=dungeon.x-30;combat.update(STEP);
+    check(combat.enemy.hp===1&&combat.swordBox().x<dungeon.x,'Left sword');
+    // Idle knight can defeat an approaching enemy without taking damage.
+    combat.restart();tick(3);check(!combat.enemy&&combat.health.hearts===3,'Idle sword defense');
+    // Death stops inputs, dropping, movement and spawning, but not the machine.
+    fresh();for(let i=0;i<3;i++){combat.health.invulnerable=0;combat.enemy.x=dungeon.x-5;combat.update(STEP);}
+    check(combat.health.dead&&dungeon.disabled,'Death state');
+    check(!document.querySelector('#game-over').hidden,'Missing game over');
+    const saved={x:dungeon.x,enemy:combat.enemy.x,used,coins:coins.length,time};
+    dungeon.keys.add('KeyD');dungeon.jumpQueued=true;dungeon.update(STEP);drop();combat.update(4);
+    check(dungeon.x===saved.x&&combat.enemy.x===saved.enemy&&used===saved.used,'Dead player/enemy moved or dropped');
+    simulate(STEP);check(time>saved.time,'Machine paused on death');
+    const machine=JSON.stringify(coins),machineTime=time,currentScore=score;
+    document.querySelector('#restart').click();
+    check(combat.health.hearts===3&&!dungeon.disabled&&dungeon.x===230,'Restart player');
+    check(JSON.stringify(coins)===machine&&time===machineTime&&score===currentScore,'Restart reset the machine or currency');
+    check(combat.enemy&&combat.enemy.hp===2,'Restart spawn');
+    dungeon.keys.add('KeyD');dungeon.update(STEP);check(dungeon.x>230,'Movement after restart');dungeon.clearInput();
+    // A single wallet: paid drops, no spending at cap or while dead/empty.
+    reset();const start=score;const beforeDrop=coins.length;drop();
+    check(score===start-1&&coins.length===beforeDrop+1&&used===1,'Paid drop');
+    score=0;const noFunds=coins.length;drop();check(coins.length===noFunds&&score===0,'Empty wallet drop');
+    score=5;coins=Array.from({length:180},()=>coin(230,130,30));drop();check(score===5,'Coin cap spent balance');
+    reset();combat.restart();
+    // Matching outcomes at 30/60/120 render Hz through the shared fixed step.
+    const outcomes=[];
+    for(const hz of [30,60,120]){
+     reset();combat.restart();lastTime=null;accumulator=0;
+     for(let i=0;i<=hz*5;i++)frame(i*1000/hz);
+     outcomes.push({hp:combat.health.hearts,enemy:combat.enemy?.hp??0,x:Math.round(dungeon.x*1000)/1000,rewards:score-STARTING_COINS});
+    }
+    check(outcomes.every(o=>JSON.stringify(o)===JSON.stringify(outcomes[0])),'Frame rate-dependent combat');
+    return {outcomes,hearts:combat.health.hearts};
+   });
+   // Real touch input can position the sword and drop a paid coin mid-combat.
+   await page.evaluate(()=>{combat.restart();combat.enemy.x=dungeon.x-34;});
+   const cdp=await page.context().newCDPSession(page),box=await page.locator('[data-knight=left]').boundingBox();
+   await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:box.x+box.width/2,y:box.y+box.height/2,id:1}]});
+   await page.waitForFunction(()=>dungeon.pointers.size===1);
+   await page.evaluate(()=>{for(let i=0;i<8;i++){dungeon.update(STEP);combat.update(STEP);}updateAim();});
+   assert.equal(await page.evaluate(()=>combat.enemy.hp),1);
+   await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+   await page.waitForFunction(()=>dungeon.pointers.size===0);
+   const wallet=await page.evaluate(()=>score);await page.locator('#drop').click();
+   assert.equal(await page.evaluate(()=>score),wallet-1);
+   await page.evaluate(()=>{draw();dungeon.draw();});
+   assert.deepEqual(errors,[]);await page.screenshot({path:`/tmp/combat-${viewport.width}.png`});console.log('PASS combat',viewport,result);await page.close();
+  }
+ }finally{await browser.close();}
+})().catch(e=>{console.error(e);process.exitCode=1;});

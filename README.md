@@ -9,14 +9,15 @@ No runtime dependencies, external assets, or build step.
 Open `index.html` in a modern browser, including Safari on iPhone. Play starts
 automatically. Move the knight left or right to choose the drop position,
 then tap **Drop Coin** to add a coin at the highlighted marker. Every coin that falls over the
-bottom edge into the collection area earns one point. Tap **↺** to reset the
-score and Used counter and refill both surfaces with 128 coins in close-packed rows and small stacks. The Used
-counter tracks tokens you drop, excluding the starting pile. Reset keeps the aim aligned with the knight. Coins are free.
+bottom edge into the collection area adds one available coin. Tap **↺** to reset the
+balance to 10 and Used counter to zero and refill both surfaces with 128 coins in close-packed rows and small stacks. The Used
+counter tracks tokens you drop, excluding the starting pile. Reset keeps the aim aligned with the knight. Drops cost one available coin;
+the starting balance is 10. The existing COINS counter is the only wallet.
 
 For local HTTP hosting, run `python3 -m http.server 8000` in this directory
 and open `http://localhost:8000`.
 
-## Dungeon walkway (Phase 1)
+## Dungeon walkway
 
 Move the knight with **Left / A** and **Right / D**, and jump with
 **Space / Up / W**. The visible direction buttons support holding and can be
@@ -24,7 +25,7 @@ used together with Jump on touchscreens. Release to stop; jumping requires a
 new press after landing. Switching away clears held controls.
 
 The geometric knight has a helmet, a walking stride, a jumping pose, and an
-extended decorative sword. The stone walkway shares the machine's horizontal
+permanently extended sword. The stone walkway shares the machine's horizontal
 bounds, but `knight.js` owns its movement and gravity. Both canvases use the
 same animation loop. The coin aimer follows the knight’s horizontal position directly; jumping
 does not change the aim. All movement, jump, drop, and reset controls sit below the coin pusher.
@@ -32,15 +33,45 @@ Both coin decks are shortened by one coin diameter (28 simulation units)
 without changing coin size, the pusher stroke, or the physics rules. The Drop Coin button still spawns coins. Reset refills
 the coin machine and does not reposition the knight.
 
-No enemies, combat, health, inventory, drops, or progression are implemented.
+## Combat and health (Phase 3)
+
+Position the sword to hit purple slimes automatically; there is no attack
+button. Slimes have 2 HP, move at half the knight's speed, flash and recoil
+when hit, and award exactly 3 available coins on death. Rewards go directly
+into COINS rather than spawning machine coins. Sword hits deal 1 damage with
+a 0.4-second per-enemy cooldown. Sword collision is resolved before body
+contact, and a struck slime cannot hurt the knight during that cooldown.
+The sword hitbox follows the visible blade, facing direction, and jumping pose.
+
+The knight has three hearts. Body contact costs one heart, gives one second
+of flashing invulnerability, and applies a short knockback. At zero hearts,
+movement, jumping, dropping, enemies, and spawning stop. GAME OVER and a
+Restart button appear below the machine. Restart restores the knight and
+combat, leaving machine coins, motion, counters, and available balance intact.
+The separate ↺ button still resets the machine and balance to the starting 10.
+
+One slime initially enters from a distant edge. After a kill, a replacement
+spawns after three seconds, alternating sides where possible and choosing the
+far edge if the knight is too close. This temporary spawner is separate from
+combat; there are no waves, equipment, additional enemies, or progression.
+
+`combat.js` separates health, slime movement, the temporary spawner, and combat
+coordination. `COMBAT_CONFIG` holds weapon reach/damage/cooldown, health,
+invulnerability, recoil, spawn delay, and rewards. The existing 120 Hz loop
+updates combat using delta time; the coin simulation and rendering are unchanged.
 
 ## Verification
 
-With Node, Playwright, and Chromium installed, run `node tests/phase1.cjs`.
+With Node, Playwright, and Chromium installed, run `node tests/phase1.cjs`
+and `node tests/combat.cjs`.
 Set `CHROMIUM_PATH` if Chromium is not at `/usr/bin/chromium`. Tests cover
 keyboard movement, facing, stopping, jump/landing, boundaries, multitouch and
 cancellation, long holds without text selection, focus loss, knight-linked aiming, coin collection/reset/cap,
 load-scaled jolts, edge spills, and layout at desktop and two portrait sizes.
+Combat tests additionally cover blade facing and hits, cooldowns, body damage,
+invulnerability, knockback, jump avoidance, idle defense, rewards and spending,
+death restrictions, restart preserving the machine, touch combat/drop input,
+and matching shared-loop outcomes at 30/60/120 render Hz.
 Real iPhone/Safari testing remains manual.
 
 ## Implementation

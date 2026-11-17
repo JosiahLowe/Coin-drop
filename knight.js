@@ -29,6 +29,11 @@ class DungeonWalkway {
     const releasePointer = e => { this.pointers.delete(e.pointerId); this.refreshButtons(); };
     window.addEventListener('pointerup', releasePointer);
     window.addEventListener('pointercancel', releasePointer);
+    // Some touch browsers end a cancelled gesture without a matching
+    // pointer release. Do not leave movement held after all fingers lift.
+    for (const event of ['touchend', 'touchcancel']) window.addEventListener(event, e => {
+      if (e.touches.length === 0) { this.pointers.clear(); this.refreshButtons(); }
+    });
     for (const button of this.buttons) {
       button.addEventListener('pointerdown', e => {
         if (e.button !== 0) return;
@@ -66,7 +71,9 @@ class DungeonWalkway {
     for (const button of this.buttons) button.setAttribute('aria-pressed', String([...this.pointers.values()].includes(button.dataset.knight)));
   }
   clearInput() { this.keys.clear(); this.pointers.clear(); this.jumpQueued = false; this.refreshButtons(); }
+  poseBob() { return this.y < this.floor ? -1 : Math.abs(Math.sin(this.walk)) * 1.5; }
   update(dt) {
+    if (this.disabled) { this.clearInput(); return; }
     const actions = new Set([...this.keys].map(key => this.actionFor(key) || key).concat([...this.pointers.values()]));
     const direction = Number(actions.has('right')) - Number(actions.has('left'));
     if (direction) this.facing = direction;
@@ -97,20 +104,21 @@ class DungeonWalkway {
     ctx.fillStyle = '#96909a'; ctx.fillRect(this.left, this.floor, this.right - this.left, 3);
     ctx.fillStyle = '#30303b';
     for (let x = this.left + 30; x < this.right; x += 40) ctx.fillRect(x, this.floor + 4, 2, 16);
-    ctx.save(); ctx.translate(this.x, this.y); ctx.scale(this.facing, 1);
+    this.drawEnemies?.(ctx);
+    ctx.save(); ctx.globalAlpha = this.damageAlpha ?? 1; ctx.translate(this.x, this.y); ctx.scale(this.facing, 1);
     const airborne = this.y < this.floor;
     const stride = airborne ? 3 : Math.sin(this.walk) * 4;
     ctx.fillStyle = '#653d54'; ctx.fillRect(-13, -32, 10, 24); // cloak
     ctx.fillStyle = '#777f93'; ctx.fillRect(-8, -16, 6, 12 - stride); ctx.fillRect(3, -16, 6, 12 + stride);
     ctx.fillStyle = '#30303c'; ctx.fillRect(-10, -5 - stride, 10, 5); ctx.fillRect(2, -5 + stride, 11, 5);
-    const bob = airborne ? -1 : Math.abs(Math.sin(this.walk)) * 1.5;
+    const bob = this.poseBob();
     ctx.translate(0, -bob);
     ctx.fillStyle = '#a4adbc'; ctx.fillRect(-10, -33, 20, 19); // torso
     ctx.fillStyle = '#e2bb6c'; ctx.fillRect(-10, -18, 20, 3);
     ctx.fillStyle = '#d7b99a'; ctx.fillRect(-6, -44, 13, 12); // head
     ctx.fillStyle = '#b6bfce'; ctx.fillRect(-9, -48, 18, 13); // helmet
     ctx.fillStyle = '#252735'; ctx.fillRect(1, -42, 9, 3); // visor points forward
-    ctx.fillStyle = '#d3dbea'; ctx.fillRect(8, -29, 10, 6); ctx.fillRect(19, -27, 13, 3); // arm and sword
+    ctx.fillStyle = '#d3dbea'; ctx.fillRect(8, -29, 10, 6); ctx.fillRect(19, -27, this.swordReach ?? 13, 3); // arm and sword
     ctx.fillStyle = '#e2bb6c'; ctx.fillRect(17, -31, 3, 11); // sword guard
     ctx.restore();
   }

@@ -11,7 +11,8 @@ const root = path.join(__dirname, '..');
    const page = await browser.newPage({viewport:size,hasTouch:size.width<500});
    const errors=[]; page.on('pageerror', e=>errors.push(e.message));
    await page.route('http://coin.test/**', route => {
-    const file = new URL(route.request().url()).pathname.endsWith('knight.js') ? 'knight.js' : 'index.html';
+    const requested = new URL(route.request().url()).pathname.slice(1);
+    const file = ['knight.js','combat.js'].includes(requested) ? requested : 'index.html';
     return route.fulfill({body:fs.readFileSync(path.join(root,file)),contentType:file.endsWith('.js')?'application/javascript':'text/html'});
    });
    // Drive the real shared loop deterministically, without wall-clock timing.
@@ -80,17 +81,19 @@ const root = path.join(__dirname, '..');
     for(const x of [230,258])for(let i=0;i<=gaps;i++)coins.push(coin(x,rear+(front-rear)*i/gaps));
     const isolated=coin(370,EDGE-15);coins.push(isolated);
     if(forwardBump(new Set(),38.75)||forwardBump(new Set([coins[0]]),-30))throw Error('Invalid bump trigger');
+    const scoreBeforeSpill=score;
     forwardBump(new Set([coins[0]]),38.75);
     if(bumpFlash!==1)throw Error('Crowded load maximum');
     for(let i=0;i<120;i++)simulate(STEP);
-    if(!score||isolated.y!==EDGE-15)throw Error('Edge spill or disconnected coin regression');
+    if(score<=scoreBeforeSpill||isolated.y!==EDGE-15)throw Error('Edge spill or disconnected coin regression');
     reset();
+    let collected=0;
     for(let i=0;i<3600;i++){
-     if(i%60===0)drop();simulate(STEP);dungeon.update(STEP);
+     if(i%60===0)drop();const before=score;simulate(STEP);collected+=score-before;dungeon.update(STEP);
      if(coins.length>180||coins.some(c=>![c.x,c.y,c.z,c.vx,c.vy,c.vz].every(Number.isFinite)))throw Error('Invalid coin physics');
     }
-    const collected=score;reset();draw();dungeon.draw();
-    return {original,collected,reset:score===0&&used===0&&coins.length===original};
+    reset();draw();dungeon.draw();
+    return {original,collected,reset:score===STARTING_COINS&&used===0&&coins.length===original};
    });
    assert(physics.original>100);assert(physics.collected>0);assert(physics.reset);
    const layout=await page.evaluate(()=>{
