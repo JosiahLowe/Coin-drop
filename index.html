@@ -140,7 +140,7 @@ function edgeBalance(c, bodies, dt) {
 // Transmit one short mechanical jolt through a touching lower pile, rather
 // than shaking disconnected coins or applying a free payout on every stroke.
 function forwardBump(contacts, speed) {
-  if (!contacts.size) return false;
+  if (!contacts.size || speed <= 0) return false;
   const connected = new Set(contacts), queue = [...contacts];
   const lower = coins.filter(c => !c.falling && c.z < SHELF_HEIGHT - 1 && Math.abs(c.vz) < 1);
   for (let i = 0; i < queue.length; i++) {
@@ -152,7 +152,18 @@ function forwardBump(contacts, speed) {
       }
     }
   }
-  const strength = Math.min(1, speed / 38.75);
+  // A lone quarter offers little resistance. Count the connected pile and
+  // its supported weight, without counting a supported coin twice.
+  const contactLoad = queue.reduce((total, c) => {
+    let base = c.support;
+    while (base) {
+      if (connected.has(base)) return total;
+      base = base.support;
+    }
+    return total + c.load;
+  }, 0);
+  const loadStrength = Math.min(1, contactLoad / 12);
+  const strength = Math.min(1, speed / 38.75) * loadStrength;
   for (const c of coins) {
     if (c.falling || Math.abs(c.vz) > 1) continue;
     const upperEdge = c.z >= SHELF_HEIGHT && c.y > pusherY - R * 2 && c.y < pusherY + R;
@@ -166,7 +177,7 @@ function forwardBump(contacts, speed) {
     c.bumpImpulse = (upperEdge ? 85 : 55) * strength * lane / Math.sqrt(c.load);
     c.bumpElapsed = 0;
   }
-  bumpFlash = 1;
+  bumpFlash = loadStrength;
   return true;
 }
 function simulate(dt) {
