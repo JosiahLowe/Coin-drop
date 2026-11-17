@@ -7,12 +7,11 @@ No runtime dependencies, external assets, or build step.
 ## Play
 
 Open `index.html` in a modern browser, including Safari on iPhone. Play starts
-automatically. Drag **Drag to Aim** left or right to choose the drop position,
+automatically. Move the knight left or right to choose the drop position,
 then tap **Drop Coin** to add a coin at the highlighted marker. Every coin that falls over the
 bottom edge into the collection area earns one point. Tap **↺** to reset the
 score and Used counter and refill both surfaces with 164 coins in close-packed rows and small stacks. The Used
-counter tracks tokens you drop, excluding the starting pile. Reset also centers
-the aim slider. Coins are free.
+counter tracks tokens you drop, excluding the starting pile. Reset keeps the aim aligned with the knight. Coins are free.
 
 For local HTTP hosting, run `python3 -m http.server 8000` in this directory
 and open `http://localhost:8000`.
@@ -27,8 +26,9 @@ new press after landing. Switching away clears held controls.
 The geometric knight has a helmet, a walking stride, a jumping pose, and an
 extended decorative sword. The stone walkway shares the machine's horizontal
 bounds, but `knight.js` owns its movement and gravity. Both canvases use the
-same animation loop. Knight position does not affect aiming or coin drops;
-the existing slider and Drop Coin button remain independent. Reset refills
+same animation loop. The coin aimer follows the knight’s horizontal position directly; jumping
+does not change the aim. The movement controls sit above the machine where
+the aim slider used to be. The Drop Coin button still spawns coins. Reset refills
 the coin machine and does not reposition the knight.
 
 No enemies, combat, health, inventory, drops, or progression are implemented.
@@ -38,7 +38,7 @@ No enemies, combat, health, inventory, drops, or progression are implemented.
 With Node, Playwright, and Chromium installed, run `node tests/phase1.cjs`.
 Set `CHROMIUM_PATH` if Chromium is not at `/usr/bin/chromium`. Tests cover
 keyboard movement, facing, stopping, jump/landing, boundaries, multitouch and
-cancellation, focus loss, independent aiming, coin collection/reset/cap,
+cancellation, long holds without text selection, focus loss, knight-linked aiming, coin collection/reset/cap,
 load-scaled jolts, edge spills, and layout at desktop and two portrait sizes.
 Real iPhone/Safari testing remains manual.
 

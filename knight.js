@@ -1,6 +1,6 @@
 'use strict';
 // Separate side-view movement. x shares the machine's horizontal units only;
-// this module never reads or changes coins, the aim slider, or drop position.
+// the game reads x for aiming; this module never changes coin physics.
 class DungeonWalkway {
   constructor(canvas, left, right) {
     this.canvas = canvas; this.ctx = canvas.getContext('2d');
@@ -9,7 +9,7 @@ class DungeonWalkway {
     this.facing = 1; this.walk = 0; this.moving = false;
     this.keys = new Set(); this.pointers = new Map(); this.jumpQueued = false;
     const actionFor = code => ({ArrowLeft:'left', KeyA:'left', ArrowRight:'right', KeyD:'right', Space:'jump', ArrowUp:'jump', KeyW:'jump'})[code];
-    // Leave native buttons and the aim range usable from the keyboard.
+    // Leave native form controls usable from the keyboard.
     const editing = target => target instanceof Element && target.matches('input, textarea, select, button, [contenteditable="true"]');
     window.addEventListener('keydown', e => {
       const action = actionFor(e.code);
@@ -20,10 +20,22 @@ class DungeonWalkway {
     });
     window.addEventListener('keyup', e => { this.keys.delete(e.code); });
     this.buttons = [...document.querySelectorAll('[data-knight]')];
+    const controls = document.querySelector('.knight-controls');
+    // Safari needs prefixed CSS plus cancellation of native long-press
+    // selection/callouts. Keep these guards confined to the game controls.
+    for (const name of ['contextmenu', 'selectstart', 'dragstart', 'touchstart']) {
+      controls.addEventListener(name, e => e.preventDefault(), { passive: false });
+    }
+    const releasePointer = e => { this.pointers.delete(e.pointerId); this.refreshButtons(); };
+    window.addEventListener('pointerup', releasePointer);
+    window.addEventListener('pointercancel', releasePointer);
     for (const button of this.buttons) {
       button.addEventListener('pointerdown', e => {
         if (e.button !== 0) return;
-        e.preventDefault(); button.setPointerCapture(e.pointerId);
+        e.preventDefault();
+        // Keep movement usable even if a browser declines capture; window
+        // release handlers below still clear the pointer.
+        try { button.setPointerCapture(e.pointerId); } catch {}
         const action = button.dataset.knight;
         this.pointers.set(e.pointerId, action);
         if (action === 'jump') this.jumpQueued = true;

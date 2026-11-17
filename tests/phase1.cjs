@@ -17,7 +17,7 @@ const root = path.join(__dirname, '..');
    // Drive the real shared loop deterministically, without wall-clock timing.
    await page.addInitScript(()=>{window.requestAnimationFrame=()=>0;});
    await page.goto('http://coin.test/');
-   const tick = n => page.evaluate(n=>{for(let i=0;i<n;i++)dungeon.update(STEP);dungeon.draw();},n);
+   const tick = n => page.evaluate(n=>{for(let i=0;i<n;i++)dungeon.update(STEP);updateAim();dungeon.draw();},n);
    const state = ()=>page.evaluate(()=>({x:dungeon.x,y:dungeon.y,facing:dungeon.facing,floor:dungeon.floor,vy:dungeon.vy}));
    await page.keyboard.down('ArrowLeft');await tick(30);await page.keyboard.up('ArrowLeft');
    assert((await state()).x<230);assert.equal((await state()).facing,-1);
@@ -40,10 +40,34 @@ const root = path.join(__dirname, '..');
    await page.waitForFunction(()=>dungeon.pointers.size===0);
    const released=(await state()).x;await tick(120);assert.equal((await state()).x,released);
    await page.evaluate(()=>window.dispatchEvent(new Event('blur')));assert.equal(await page.evaluate(()=>dungeon.pointers.size),0);
-   // Native slider arrow keys remain available, and knight movement never aims coins.
-   const aim=await page.locator('#aim').inputValue();
-   await page.locator('#aim').focus();await page.keyboard.press('ArrowRight');assert.equal(Number(await page.locator('#aim').inputValue()),Number(aim)+1);
-   assert.equal((await state()).x,released);await page.locator('#aim').blur();
+   // Knight position aims both the marker and newly spawned coins.
+   assert.equal(await page.locator('#aim').count(),0);
+   assert.equal(await page.evaluate(()=>dropX),released);
+   await page.keyboard.down('KeyA');await tick(30);await page.keyboard.up('KeyA');
+   assert.equal(await page.evaluate(()=>dropX), (await state()).x);
+   const aimBeforeJump=await page.evaluate(()=>dropX);
+   await page.keyboard.press('Space');await tick(15);assert.equal(await page.evaluate(()=>dropX),aimBeforeJump);await tick(120);
+   await page.locator('#drop').click();
+   assert.equal(await page.evaluate(()=>coins.at(-1).x), (await state()).x);
+   await page.locator('#reset').click();assert.equal(await page.evaluate(()=>dropX), (await state()).x);
+   await page.locator('#reset').blur();
+   // Long holds must not select text or open a native context menu. Repeat
+   // presses, slide outside the button, and release without stuck movement.
+   for (const action of ['left','right','left']) {
+    const box=await page.locator(`[data-knight=${action}]`).boundingBox();
+    await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:box.x+box.width/2,y:box.y+box.height/2,id:5}]});
+    await page.waitForFunction(()=>dungeon.pointers.size===1);
+    await page.waitForTimeout(800);await tick(20);
+    assert.equal((await state()).facing,action==='left'?-1:1);
+    await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:box.x+box.width/2,y:box.y+box.height+25,id:5}]});
+    await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+    await page.waitForFunction(()=>dungeon.pointers.size===0);
+    const x=(await state()).x;await tick(30);assert.equal((await state()).x,x);
+    assert.equal(await page.evaluate(()=>getSelection().toString()),'');
+   }
+   assert(await page.locator('.knight-controls').evaluate(el=>{
+    const e=new Event('contextmenu',{bubbles:true,cancelable:true});el.dispatchEvent(e);return e.defaultPrevented;
+   }));
    const physics = await page.evaluate(()=>{
     reset();const original=coins.length;
     coins=[coin(230,249),coin(230,225,30)];updateStackLoads();
@@ -69,9 +93,9 @@ const root = path.join(__dirname, '..');
    assert.equal(physics.original,164);assert(physics.collected>0);assert(physics.reset);
    const layout=await page.evaluate(()=>{
     const d=document.querySelector('#dungeon').getBoundingClientRect(),g=document.querySelector('#game').getBoundingClientRect();
-    return {top:d.top,bottom:g.bottom,height:innerHeight,aligned:Math.abs(d.left-g.left)<1&&Math.abs(d.width-g.width)<1,visible:d.top>=0&&g.bottom<=innerHeight,width:document.documentElement.scrollWidth<=innerWidth,touch:getComputedStyle(document.querySelector('[data-knight]')).touchAction};
+    return {top:d.top,bottom:g.bottom,height:innerHeight,aligned:Math.abs(d.left-g.left)<1&&Math.abs(d.width-g.width)<1,visible:d.top>=0&&g.bottom<=innerHeight,width:document.documentElement.scrollWidth<=innerWidth,touch:getComputedStyle(document.querySelector('[data-knight]')).touchAction,selection:getComputedStyle(document.querySelector('[data-knight]')).userSelect,controlsBelow:document.querySelector('.knight-controls').getBoundingClientRect().top>=d.bottom};
    });
-   assert(layout.aligned);assert(layout.visible,JSON.stringify({size,layout}));assert(layout.width);assert.equal(layout.touch,'none');assert.deepEqual(errors,[]);
+   assert(layout.aligned);assert(layout.visible,JSON.stringify({size,layout}));assert(layout.width);assert.equal(layout.touch,'none');assert.equal(layout.selection,'none');assert(layout.controlsBelow);assert.deepEqual(errors,[]);
    await page.screenshot({path:`/tmp/coin-phase1-${size.width}.png`});
    console.log('PASS',size,physics,layout);await page.close();
   }
