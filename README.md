@@ -9,7 +9,7 @@ Open `index.html` in a modern browser, including Safari on iPhone. Play starts
 automatically. Drag **Drag to Aim** left or right to choose the drop position,
 then tap **Drop Coin** to add a coin at the highlighted marker. Every coin that falls over the
 bottom edge into the collection area earns one point. Tap **↺** to reset the
-score and Used counter and restore the starting pile of 55 coins. The Used
+score and Used counter and refill both surfaces with 164 coins in close-packed rows and small stacks. The Used
 counter tracks tokens you drop, excluding the starting pile. Reset also centers
 the aim slider. Coins are free.
 

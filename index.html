@@ -52,15 +52,24 @@ function coin(x, y, z = 0) {
 function reset() {
   time = 0; pusherY = pusherAt(0); coins = []; particles = [];
   aimElement.value = '230'; updateAim();
-  for (let row = 0; row < 2; row++) {
-    for (let col = 0; col < 10; col++) coins.push(coin(87 + col * 31, 177 + row * 30, SHELF_HEIGHT));
+  // Close-packed rows cover each playable deck, with a little clearance so
+  // the starting quarters do not intersect each other or the side rails.
+  const spacing = R * 2 + .5;
+  const rowSpacing = spacing * Math.sqrt(3) / 2;
+  function fillSurface(firstY, lastY, z) {
+    for (let row = 0, y = firstY; y <= lastY; row++, y += rowSpacing) {
+      const offset = row % 2 ? spacing / 2 : 0;
+      for (let x = LEFT + R + offset; x <= RIGHT - R; x += spacing) {
+        coins.push(coin(x, y, z));
+      }
+    }
   }
-  for (let row = 0; row < 4; row++) {
-    for (let col = 0; col < 8; col++) coins.push(coin(99 + col * 37 + (row % 2) * 6, 316 + row * 32));
-  }
-  // A few overlapping coins make the height of the starting piles visible.
-  for (const i of [22, 34, 45]) {
-    const base = coins[i]; coins.push(coin(base.x + 7, base.y + 4, THICKNESS));
+  fillSurface(BACK + R, pusherY - R * .75, SHELF_HEIGHT);
+  fillSurface(pusherY + R + .5, EDGE - R, 0);
+  // A few overlapping quarters keep both dense decks visibly layered.
+  for (const i of [14, 33, 51, 73, 92, 110, 128, 145]) {
+    const base = coins[i];
+    coins.push(coin(base.x + 6, base.y + 3, base.z + THICKNESS));
   }
   score = 0; used = 0; accumulator = 0;
   scoreElement.textContent = '0'; usedElement.textContent = '0';
