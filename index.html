@@ -16,17 +16,29 @@
 #aim::-moz-range-track { height: 5px; border-radius: 5px; background: #496047; }
 #aim::-moz-range-thumb { box-sizing: border-box; width: 28px; height: 28px; border: 3px solid #ffe5a0; border-radius: 50%; background: #d8ae55; }
 #aim:focus-visible { outline: 2px solid #ffe5a0; outline-offset: 2px; border-radius: 10px; }
+/* Keep both canvases in view on portrait screens; neither overlays the other. */
+main{width:min(100%,440px,calc((100svh - 300px)*.56));min-width:230px}
+header{margin-bottom:4px}h1{font-size:26px;margin:2px 0}.stats{padding-bottom:6px}output{font-size:24px}
+.bar{padding:8px 12px}.hint{margin:8px 0;font-size:10px}footer{margin-top:8px}
+.dungeon{background:#15151d;border-bottom:2px solid #62616b}
+#dungeon{aspect-ratio:460/150}
+.knight-controls{display:flex;gap:8px;padding:6px 10.65%;background:#20202a}
+.knight-controls button{min-height:44px;flex:1;background:#3d3d4b;color:#f1e4bd;touch-action:none;user-select:none;font-size:14px}
+.knight-controls button[aria-pressed="true"]{background:#696077}
+.controls{margin-top:8px} .controls button{min-height:44px}
+@media(max-height:740px){main{max-width:350px}header{margin-bottom:4px}h1{font-size:26px}.hint{margin:6px 0}footer{margin-top:6px}}
 </style>
 </head>
 <body>
 <main>
 <header><div><div class="label">POCKET ARCADE / 001</div><h1>COIN DROP<span>.</span></h1></div></header>
 <div class="stats" aria-label="Game counters"><div><span class="label">USED</span><output id="used" aria-label="Tokens dropped">0</output></div><div class="score"><span class="label">COLLECTED</span><output id="score" aria-label="Collected coins">0</output></div></div>
-<section class="machine" aria-label="Coin pusher machine"><div class="bar"><span>TOP VIEW</span><span class="live">● IN PLAY</span></div><div class="aim"><label for="aim">DRAG TO AIM</label><input id="aim" type="range" min="63" max="397" step="1" value="230" aria-label="Coin drop position" aria-valuetext="Center"></div><canvas id="game" width="460" height="540" aria-label="Top-down, two-level coin pusher. Drop quarters on the upper shelf, build overlapping piles, and push coins off the lower deck.">Use Drop Coin to play.</canvas></section>
+<section class="machine" aria-label="Dungeon walkway and coin pusher"><div class="dungeon"><div class="bar"><span>DUNGEON WALKWAY</span><span>PHASE 1</span></div><canvas id="dungeon" width="460" height="150" aria-label="Knight on a stone walkway. Move with arrows or A and D. Jump with Space, Up, or W."></canvas><div class="knight-controls" role="group" aria-label="Knight controls"><button type="button" data-knight="left" aria-label="Move left" aria-pressed="false">←</button><button type="button" data-knight="right" aria-label="Move right" aria-pressed="false">→</button><button type="button" data-knight="jump" aria-label="Jump" aria-pressed="false">JUMP</button></div></div><div class="bar"><span>TOP VIEW</span><span class="live">● IN PLAY</span></div><div class="aim"><label for="aim">DRAG TO AIM</label><input id="aim" type="range" min="63" max="397" step="1" value="230" aria-label="Coin drop position" aria-valuetext="Center"></div><canvas id="game" width="460" height="540" aria-label="Top-down, two-level coin pusher. Drop quarters on the upper shelf, build overlapping piles, and push coins off the lower deck.">Use Drop Coin to play.</canvas></section>
 <div class="controls"><button id="drop" type="button">＋ DROP COIN</button><button id="reset" type="button" aria-label="Reset game" title="Reset game">↺</button></div>
-<p class="hint">Slide to aim. Tap to drop. Work the pile.<br>Every coin off the lower deck earns a point.</p>
+<p class="hint">Knight: ← → / A D · Jump: Space / ↑ / W<br>Slide to aim. Tap to drop. Every coin off the lower deck earns a point.</p>
 <footer><span>NO TOKENS REQUIRED</span><span>JUST ONE MORE DROP ↗</span></footer>
 </main>
+<script src="knight.js"></script>
 <script>
 'use strict';
 const canvas = document.getElementById('game');
@@ -43,6 +55,7 @@ function updateAim() {
 aimElement.addEventListener('input', updateAim);
 const R = 14, THICKNESS = 5, SHELF_HEIGHT = 30, MAX_STACK = 3;
 const EDGE = 445, LEFT = 49, RIGHT = 411, BACK = 110, STEP = 1 / 120;
+const dungeon = new DungeonWalkway(document.getElementById('dungeon'), LEFT, RIGHT);
 let coins = [], score = 0, used = 0, time = 0;
 let pusherY = 235, accumulator = 0, lastTime = null, particles = [];
 let bumpUsed = false, bumpFlash = 0;
@@ -162,7 +175,7 @@ function forwardBump(contacts, speed) {
     }
     return total + c.load;
   }, 0);
-  const loadStrength = Math.min(1, contactLoad / 12);
+  const loadStrength = Math.min(1, (contactLoad / 12) ** 2);
   const strength = Math.min(1, speed / 38.75) * loadStrength;
   for (const c of coins) {
     if (c.falling || Math.abs(c.vz) > 1) continue;
@@ -366,12 +379,12 @@ function draw() {
 function frame(now) {
   if (lastTime !== null) accumulator += Math.min((now - lastTime) / 1000, .05);
   lastTime = now;
-  while (accumulator >= STEP) { simulate(STEP); accumulator -= STEP; }
-  draw(); requestAnimationFrame(frame);
+  while (accumulator >= STEP) { simulate(STEP); dungeon.update(STEP); accumulator -= STEP; }
+  draw(); dungeon.draw(); requestAnimationFrame(frame);
 }
 document.getElementById('drop').addEventListener('click', drop);
 document.getElementById('reset').addEventListener('click', reset);
-document.addEventListener('visibilitychange', () => { lastTime = null; accumulator = 0; });
+document.addEventListener('visibilitychange', () => { lastTime = null; accumulator = 0; dungeon.clearInput(); });
 reset(); requestAnimationFrame(frame);
 </script>
 </body>

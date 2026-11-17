@@ -1,7 +1,8 @@
 # COIN DROP
 
 A mobile-friendly top-down coin pusher built with plain HTML, CSS, and JavaScript.
-No dependencies, external assets, or build step.
+A separate side-view dungeon walkway sits above the machine.
+No runtime dependencies, external assets, or build step.
 
 ## Play
 
@@ -15,6 +16,31 @@ the aim slider. Coins are free.
 
 For local HTTP hosting, run `python3 -m http.server 8000` in this directory
 and open `http://localhost:8000`.
+
+## Dungeon walkway (Phase 1)
+
+Move the knight with **Left / A** and **Right / D**, and jump with
+**Space / Up / W**. The visible direction buttons support holding and can be
+used together with Jump on touchscreens. Release to stop; jumping requires a
+new press after landing. Switching away clears held controls.
+
+The geometric knight has a helmet, a walking stride, a jumping pose, and an
+extended decorative sword. The stone walkway shares the machine's horizontal
+bounds, but `knight.js` owns its movement and gravity. Both canvases use the
+same animation loop. Knight position does not affect aiming or coin drops;
+the existing slider and Drop Coin button remain independent. Reset refills
+the coin machine and does not reposition the knight.
+
+No enemies, combat, health, inventory, drops, or progression are implemented.
+
+## Verification
+
+With Node, Playwright, and Chromium installed, run `node tests/phase1.cjs`.
+Set `CHROMIUM_PATH` if Chromium is not at `/usr/bin/chromium`. Tests cover
+keyboard movement, facing, stopping, jump/landing, boundaries, multitouch and
+cancellation, focus loss, independent aiming, coin collection/reset/cap,
+load-scaled jolts, edge spills, and layout at desktop and two portrait sizes.
+Real iPhone/Safari testing remains manual.
 
 ## Implementation
 
@@ -34,7 +60,8 @@ overhang, while forward weight can tip it. Removing or shifting a counterweight
 releases the coin into a short tipping animation and then gravity.
 A forward stroke that contacts the lower pile can produce one brief mechanical
 bump, eased over 140 ms with a faint fading lip highlight. Its strength grows
-with the connected pile's weight: one coin produces barely a nudge, while
+quadratically with the connected pile's weight: one coin produces less than
+1% of the maximum nudge, while
 twelve coins of supported weight reach the existing subtle maximum. It travels
 through touching coins to the front edge and jolts the upper
 lip above the contact columns. Edge coins can fall, and upper coins can tumble
