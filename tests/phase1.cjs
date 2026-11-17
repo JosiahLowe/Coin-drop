@@ -89,7 +89,7 @@ const root = path.join(__dirname, '..');
    }));
    const physics = await page.evaluate(()=>{
     reset();const original=coins.length;
-    if(EDGE!==389||pusherAt(0)!==207||canvas.height!==484)throw Error('Deck shortening regression');
+    if(EDGE!==389||pusherAt(0)!==207||canvas.height!==432)throw Error('Deck shortening regression');
     coins=[coin(230,pusherY+R),coin(230,pusherY-10,30)];updateStackLoads();
     forwardBump(new Set([coins[0]]),38.75);
     if(bumpFlash>0.007||coins[1].bumpImpulse>0.6)throw Error('Single coin jolt too strong');
