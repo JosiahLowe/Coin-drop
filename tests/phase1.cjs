@@ -12,7 +12,7 @@ const root = path.join(__dirname, '..');
    const errors=[]; page.on('pageerror', e=>errors.push(e.message));
    await page.route('http://coin.test/**', route => {
     const requested = new URL(route.request().url()).pathname.slice(1);
-    const file = ['knight.js','waves.js','combat.js'].includes(requested) ? requested : 'index.html';
+    const file = ['loot.js','knight.js','waves.js','combat.js'].includes(requested) ? requested : 'index.html';
     return route.fulfill({body:fs.readFileSync(path.join(root,file)),contentType:file.endsWith('.js')?'application/javascript':'text/html'});
    });
    // Drive the real shared loop deterministically, without wall-clock timing.
@@ -49,7 +49,7 @@ const root = path.join(__dirname, '..');
    const aimBeforeJump=await page.evaluate(()=>dropX);
    await page.keyboard.press('Space');await tick(15);assert.equal(await page.evaluate(()=>dropX),aimBeforeJump);await tick(120);
    await page.evaluate(()=>{score=1;}); // Fund one drop independently of combat.
-   await page.locator('#drop').click();
+   await page.evaluate(()=>{updateAim();spawnCoin(dropX);});
    assert.equal(await page.evaluate(()=>coins.at(-1).x), (await state()).x);
    await page.locator('#reset').click();assert.equal(await page.evaluate(()=>dropX), (await state()).x);
    await page.locator('#reset').blur();
@@ -108,7 +108,7 @@ const root = path.join(__dirname, '..');
     score=60; // Exercise the machine with funded drops, independent of rewards.
     let collected=0;
     for(let i=0;i<3600;i++){
-     if(i%60===0)drop();const before=score;simulate(STEP);collected+=score-before;dungeon.update(STEP);
+     if(i%60===0)spawnCoin(dropX);const before=score;simulate(STEP);collected+=score-before;dungeon.update(STEP);
      if(coins.length>180||coins.some(c=>![c.x,c.y,c.z,c.vx,c.vy,c.vz].every(Number.isFinite)))throw Error('Invalid coin physics');
     }
     const drops=used;reset();draw();dungeon.draw();

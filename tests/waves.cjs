@@ -69,7 +69,7 @@ const fs=require('node:fs');const path=require('node:path');const assert=require
    // Existing manual drop remains paid; empty balances cannot spawn freely.
    reset();combat.restart();const count=coins.length;for(let i=0;i<10;i++)drop();
    check(coins.length===count&&score===0,'Unlimited manual spawning');
-   score=1;drop();drop();check(coins.length===count+1&&score===0,'Manual funded drop not preserved');
+   score=1;drop();drop();check(coins.length===count&&score===1,'Manual spending enabled');
    combat.update(0);draw();dungeon.draw();
    return {counts,remaining:combat.waves.remaining};
   });
