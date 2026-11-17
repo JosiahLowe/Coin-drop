@@ -97,16 +97,15 @@ function reset() {
   time = 0; pusherY = pusherAt(0); coins = []; particles = []; pendingCoinDrops = []; loot.pending = [];
   updateAim();
   bumpUsed = false; bumpFlash = 0;
-  // Keep half the former grid positions empty for lighter starting piles.
-  // Coin size, row spacing, and the simulation rules stay the same.
+  // Fill both decks with close-packed coins so pushes transmit through
+  // the pile immediately. Keep the existing size and row spacing.
   const spacing = R * 2 + .5;
   const rowSpacing = spacing * Math.sqrt(3) / 2;
   function fillSurface(firstY, lastY, z) {
     for (let row = 0, y = firstY; y <= lastY; row++, y += rowSpacing) {
       const offset = row % 2 ? spacing / 2 : 0;
-      let column = 0;
       for (let x = LEFT + R + offset; x <= RIGHT - R; x += spacing) {
-        if ((row + column++) % 2 === 0) coins.push(coin(x, y, z));
+        coins.push(coin(x, y, z));
       }
     }
   }

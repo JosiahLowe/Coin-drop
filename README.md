@@ -13,7 +13,7 @@ Enemy deaths do not award wallet coins. Machine collections add one coin to the
 existing COINS balance, which starts at zero. Stored coins are not spendable in Phase 5A. The existing manual-drop code
 is retained behind a disabled flag, and its button is hidden.
 
-Tap **↺** to refill the machine with 64 coins in sparse rows and two small stacks,
+Tap **↺** to refill the machine with 124 coins in close-packed rows and two small stacks,
 clear queued feeds and physical loot, and reset COINS and USED to zero. USED counts coins fed into
 the machine from either source, excluding the starting pile. This machine reset
 does not reset combat. The GAME OVER Restart button resets combat and waves only.

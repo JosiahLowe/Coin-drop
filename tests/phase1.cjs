@@ -114,7 +114,7 @@ const root = path.join(__dirname, '..');
     const drops=used;reset();draw();dungeon.draw();
     return {original,collected,drops,reset:score===STARTING_COINS&&used===0&&coins.length===original};
    });
-   assert.equal(physics.original,64);assert.equal(physics.drops,60);assert(physics.reset);
+   assert.equal(physics.original,124);assert.equal(physics.drops,60);assert(physics.reset);
    const layout=await page.evaluate(()=>{
     const d=document.querySelector('#dungeon').getBoundingClientRect(),g=document.querySelector('#game').getBoundingClientRect();
     return {top:d.top,bottom:g.bottom,height:innerHeight,aligned:Math.abs(d.left-g.left)<1&&Math.abs(d.width-g.width)<1,visible:d.top>=0&&g.bottom<=innerHeight,width:document.documentElement.scrollWidth<=innerWidth,touch:getComputedStyle(document.querySelector('[data-knight]')).touchAction,selection:getComputedStyle(document.querySelector('[data-knight]')).userSelect,controlsBelow:document.querySelector('.knight-controls').getBoundingClientRect().top>=g.bottom};
