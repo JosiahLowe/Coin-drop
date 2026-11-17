@@ -23,22 +23,22 @@ const path=require('node:path');
      }
     }
     const tick=(seconds,move=false)=>{for(let t=0;t<seconds-1e-8;t+=STEP){if(move)dungeon.update(STEP);combat.update(STEP);}};
-    const fresh=()=>{combat.restart();combat.enemy.config={...combat.enemy.config,speed:0};};
-    check(combat.enemy&&Math.abs(combat.enemy.x-dungeon.x)>110,'Initial spawn distance');
+    const fresh=()=>{combat.restart();combat.enemies[0].config={...combat.enemies[0].config,speed:0};};
+    check(combat.enemies[0]&&Math.abs(combat.enemies[0].x-dungeon.x)>110,'Initial spawn distance');
     // Face right: sword overlaps the slime before the body does.
-    fresh();combat.enemy.x=dungeon.x+30;combat.update(STEP);
-    check(combat.enemy.hp===1&&combat.health.hearts===3,'Sword-first hit');
+    fresh();combat.enemies[0].x=dungeon.x+30;combat.update(STEP);
+    check(combat.enemies[0].hp===1&&combat.health.hearts===3,'Sword-first hit');
     check(combat.swordBox().x>dungeon.x,'Right sword');
     // Maintain contact, preventing recoil in this fixture to isolate cooldown.
-    combat.enemy.config.recoilSpeed=0;tick(.3);
-    check(combat.enemy.hp===1,'Continuous contact bypassed cooldown');
+    combat.enemies[0].config.recoilSpeed=0;tick(.3);
+    check(combat.enemies[0].hp===1,'Continuous contact bypassed cooldown');
     const count=coins.length,balance=score;tick(.12);
-    check(!combat.enemy&&score===balance+1&&coins.length===count,'Exactly one currency reward, no machine coin spawn');
-    tick(2.8);check(!combat.enemy,'Spawn too early');tick(.25);check(combat.enemy,'Respawn missing');
-    check(combat.enemy.x<dungeon.x,'Alternating spawn side');
+    check(!combat.enemies[0]&&score===balance&&coins.length===count+1,'Exactly one physical coin and no wallet reward');
+    tick(1.5);check(!combat.enemies[0],'Spawn too early');tick(.1);check(combat.enemies[0],'Respawn missing');
+    check(combat.enemies[0].x<dungeon.x,'Alternating spawn side');
     // Crossing overhead does not reverse pursuit until the knight lands.
     for(const direction of [-1,1]){
-     combat.restart();const enemy=combat.enemy;
+     combat.restart();const enemy=combat.enemies[0];
      enemy.x=230;dungeon.x=230+direction*70;enemy.update(STEP,dungeon);
      check(enemy.moveDirection===direction,'Grounded pursuit direction');
      dungeon.y=dungeon.floor-60;dungeon.x=230-direction*70;
@@ -48,36 +48,36 @@ const path=require('node:path');
      check(enemy.moveDirection===-direction,'Pursuit did not resume on landing');
     }
     // A full moving jump clears a slime without it turning underneath us.
-    combat.restart();combat.enemy.x=310;dungeon.keys.add('KeyD');dungeon.jumpQueued=true;
+    combat.restart();combat.enemies[0].x=310;dungeon.keys.add('KeyD');dungeon.jumpQueued=true;
     tick(.75,true);dungeon.clearInput();
     check(dungeon.y===dungeon.floor&&combat.health.hearts===3,'Jump-over caused body damage');
-    check(dungeon.x>combat.enemy.x,'Jump did not clear slime');
+    check(dungeon.x>combat.enemies[0].x,'Jump did not clear slime');
     // Behind body contact damages the player, then invulnerability blocks it.
-    fresh();combat.enemy.x=dungeon.x-8;combat.update(STEP);
+    fresh();combat.enemies[0].x=dungeon.x-8;combat.update(STEP);
     check(combat.health.hearts===2,'Rear body damage');
     check(document.querySelector('#hearts').getAttribute('aria-label')==='2 of 3 hearts','Immediate heart update');
     const x=dungeon.x;tick(.1);check(dungeon.x>x,'Knockback direction');
     tick(.7);check(combat.health.hearts===2,'Invulnerability failed');
     // A high jump avoids both body and sword contact.
-    fresh();combat.enemy.x=dungeon.x-5;dungeon.y=dungeon.floor-60;combat.update(STEP);check(combat.health.hearts===3&&combat.enemy.hp===2,'Jump overlap');
+    fresh();combat.enemies[0].x=dungeon.x-5;dungeon.y=dungeon.floor-60;combat.update(STEP);check(combat.health.hearts===3&&combat.enemies[0].hp===2,'Jump overlap');
     // Turning changes both sword sides immediately, with a valid left hit.
-    fresh();dungeon.facing=-1;combat.enemy.x=dungeon.x-30;combat.update(STEP);
-    check(combat.enemy.hp===1&&combat.swordBox().x<dungeon.x,'Left sword');
+    fresh();dungeon.facing=-1;combat.enemies[0].x=dungeon.x-30;combat.update(STEP);
+    check(combat.enemies[0].hp===1&&combat.swordBox().x<dungeon.x,'Left sword');
     // Idle knight can defeat an approaching enemy without taking damage.
-    combat.restart();tick(3);check(!combat.enemy&&combat.health.hearts===3,'Idle sword defense');
+    combat.restart();const idleEnemy=combat.enemies[0];tick(2);check(idleEnemy.defeated&&combat.health.hearts===3,'Idle sword defense');
     // Death stops inputs, dropping, movement and spawning, but not the machine.
-    fresh();for(let i=0;i<3;i++){combat.health.invulnerable=0;combat.enemy.x=dungeon.x-5;combat.update(STEP);}
+    fresh();for(let i=0;i<3;i++){combat.health.invulnerable=0;combat.enemies[0].x=dungeon.x-5;combat.update(STEP);}
     check(combat.health.dead&&dungeon.disabled,'Death state');
     check(!document.querySelector('#game-over').hidden,'Missing game over');
-    const saved={x:dungeon.x,enemy:combat.enemy.x,used,coins:coins.length,time};
+    const saved={x:dungeon.x,enemy:combat.enemies[0].x,used,coins:coins.length,time};
     dungeon.keys.add('KeyD');dungeon.jumpQueued=true;dungeon.update(STEP);drop();combat.update(4);
-    check(dungeon.x===saved.x&&combat.enemy.x===saved.enemy&&used===saved.used,'Dead player/enemy moved or dropped');
+    check(dungeon.x===saved.x&&combat.enemies[0].x===saved.enemy&&used===saved.used,'Dead player/enemy moved or dropped');
     simulate(STEP);check(time>saved.time,'Machine paused on death');
     const machine=JSON.stringify(coins),machineTime=time,currentScore=score;
     document.querySelector('#restart').click();
     check(combat.health.hearts===3&&!dungeon.disabled&&dungeon.x===230,'Restart player');
     check(JSON.stringify(coins)===machine&&time===machineTime&&score===currentScore,'Restart reset the machine or currency');
-    check(combat.enemy&&combat.enemy.hp===2,'Restart spawn');
+    check(combat.enemies[0]&&combat.enemies[0].hp===2,'Restart spawn');
     dungeon.keys.add('KeyD');dungeon.update(STEP);check(dungeon.x>230,'Movement after restart');dungeon.clearInput();
     // A single wallet: paid drops, no spending at cap or while dead/empty.
     reset();check(score===0,'Starting balance must be zero');score=1;const start=score;const beforeDrop=coins.length;drop();
@@ -90,20 +90,21 @@ const path=require('node:path');
     for(const hz of [30,60,120]){
      reset();combat.restart();lastTime=null;accumulator=0;
      for(let i=0;i<=hz*5;i++)frame(i*1000/hz);
-     outcomes.push({hp:combat.health.hearts,enemy:combat.enemy?.hp??0,x:Math.round(dungeon.x*1000)/1000,rewards:score-STARTING_COINS});
+     outcomes.push({hp:combat.health.hearts,enemy:combat.enemies[0]?.hp??0,x:Math.round(dungeon.x*1000)/1000,rewards:score-STARTING_COINS});
     }
     check(outcomes.every(o=>JSON.stringify(o)===JSON.stringify(outcomes[0])),'Frame rate-dependent combat');
     return {outcomes,hearts:combat.health.hearts};
    });
    // Real touch input can position the sword and drop a paid coin mid-combat.
-   await page.evaluate(()=>{combat.restart();combat.enemy.x=dungeon.x-34;});
+   await page.evaluate(()=>{combat.restart();combat.enemies[0].x=dungeon.x-34;});
    const cdp=await page.context().newCDPSession(page),box=await page.locator('[data-knight=left]').boundingBox();
    await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:box.x+box.width/2,y:box.y+box.height/2,id:1}]});
    await page.waitForFunction(()=>dungeon.pointers.size===1);
    await page.evaluate(()=>{for(let i=0;i<8;i++){dungeon.update(STEP);combat.update(STEP);}updateAim();});
-   assert.equal(await page.evaluate(()=>combat.enemy.hp),1);
+   assert.equal(await page.evaluate(()=>combat.enemies[0].hp),1);
    await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
    await page.waitForFunction(()=>dungeon.pointers.size===0);
+   await page.evaluate(()=>{score=1;}); // Retained paid manual drop, separate from death rewards.
    const wallet=await page.evaluate(()=>score);await page.locator('#drop').click();
    assert.equal(await page.evaluate(()=>score),wallet-1);
    await page.evaluate(()=>{draw();dungeon.draw();});

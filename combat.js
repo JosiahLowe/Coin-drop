@@ -3,7 +3,6 @@ const COMBAT_CONFIG = {
   sword: { damage: 1, reach: 13, hitCooldown: .4 },
   player: { hearts: 3, invulnerability: 1, knockbackSpeed: 105, knockbackTime: .16 },
   slime: { health: 2, damage: 1, speed: 77.5, radius: 15, height: 32, recoilSpeed: 95, recoilTime: .18 },
-  spawnDelay: 3, reward: 1
 };
 const overlaps = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
 
@@ -59,37 +58,20 @@ class Slime {
   }
 }
 
-// Temporary one-at-a-time spawning, replaceable independently of combat.
-class SlimeSpawner {
-  constructor(config) { this.config = config; this.reset(); }
-  reset() { this.timer = 0; this.side = 1; }
-  update(dt, active, knight) {
-    if (active) return null;
-    this.timer = Math.max(0, this.timer - dt);
-    if (this.timer > 1e-8) return null;
-    let x = this.side > 0 ? knight.right - this.config.slime.radius : knight.left + this.config.slime.radius;
-    // If the knight is camping at the entry, use the opposite edge.
-    if (Math.abs(x - knight.x) < 110) x = x > (knight.left + knight.right) / 2 ? knight.left + this.config.slime.radius : knight.right - this.config.slime.radius;
-    this.side *= -1;
-    return new Slime(x, this.config.slime, Math.sign(knight.x - x));
-  }
-  defeated() { this.timer = this.config.spawnDelay; }
-}
-
 class DungeonCombat {
   constructor(knight, reward, onChange = () => {}, config = COMBAT_CONFIG) {
     this.knight = knight; this.reward = reward; this.onChange = onChange; this.config = config;
-    this.health = new PlayerHealth(config.player); this.spawner = new SlimeSpawner(config);
+    this.health = new PlayerHealth(config.player); this.waves = new WaveManager();
     knight.swordReach = config.sword.reach;
     knight.drawEnemies = ctx => this.drawEnemies(ctx);
     this.restart();
   }
   restart() {
     const k = this.knight;
-    this.health.reset(); this.enemy = null; this.effects = []; this.spawner.reset();
+    this.health.reset(); this.enemies = []; this.effects = []; this.waves.reset();
     k.x = (k.left + k.right) / 2; k.y = k.floor; k.vy = 0; k.facing = 1;
     k.walk = 0; k.moving = false; k.disabled = false; k.damageAlpha = 1; k.clearInput();
-    this.enemy = this.spawner.update(0, false, k); this.onChange(this);
+    this.waves.update(0, side => this.spawnEnemy(side)); this.onChange(this);
   }
   swordBox() {
     const k = this.knight, reach = this.config.sword.reach;
@@ -104,30 +86,39 @@ class DungeonCombat {
     k.x = Math.max(k.left + 32, Math.min(k.right - 32, k.x + h.direction * this.config.player.knockbackSpeed * shove));
     for (const p of this.effects) { p.life -= dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 160 * dt; }
     this.effects = this.effects.filter(p => p.life > 0);
-    this.enemy = this.enemy || this.spawner.update(dt, false, k);
-    const e = this.enemy;
-    if (e) {
+    this.waves.update(dt, side => this.spawnEnemy(side));
+    // Every sword collision resolves before any body contact, including
+    // when several enemies reach the knight in the same simulation step.
+    for (const e of this.enemies) {
       e.update(dt, k);
-      // Resolve sword first. A struck enemy cannot hurt the player during
-      // its hit cooldown, giving recoil time to separate the bodies.
       if (overlaps(this.swordBox(), e.box(k.floor))) e.hit(this.config.sword.damage, k.facing, this.config.sword.hitCooldown);
-      if (e.hp === 0) this.defeatEnemy();
-      else if (e.hitTimer <= 1e-8 && overlaps(this.bodyBox(), e.box(k.floor))) {
-        if (h.damage(e.config.damage, k.x >= e.x ? 1 : -1)) {
-          if (h.dead) { k.disabled = true; k.clearInput(); k.vy = 0; }
-          this.onChange(this);
+      if (e.hp === 0) this.defeatEnemy(e);
+    }
+    this.enemies = this.enemies.filter(e => !e.defeated);
+    for (const e of this.enemies) {
+      if (e.hitTimer <= 1e-8 && overlaps(this.bodyBox(), e.box(k.floor))) {
+        if (h.damage(e.config.damage, k.x >= e.x ? 1 : -1) && h.dead) {
+          k.disabled = true; k.clearInput(); k.vy = 0;
         }
       }
     }
+    this.onChange(this);
     k.damageAlpha = h.invulnerable > 0 && Math.floor(h.invulnerable * 14) % 2 ? .3 : 1;
   }
-  defeatEnemy() {
-    const e = this.enemy;
+  spawnEnemy(side) {
+    const k = this.knight, radius = this.config.slime.radius;
+    let x = side > 0 ? k.right - radius : k.left + radius;
+    if (Math.abs(x - k.x) < 110) x = x > (k.left + k.right) / 2 ? k.left + radius : k.right - radius;
+    this.enemies.push(new Slime(x, this.config.slime, Math.sign(k.x - x)));
+  }
+  defeatEnemy(e) {
+    if (e.defeated || e.hp > 0) return;
+    e.defeated = true;
     for (let i = 0; i < 7; i++) this.effects.push({ x: e.x, y: this.knight.floor - 16, vx: Math.cos(i * 2.4) * 38, vy: -30 - i * 5, life: .4 });
-    this.enemy = null; this.spawner.defeated(); this.reward(this.config.reward);
+    this.waves.defeatedEnemy(); this.reward(e.x);
   }
   drawEnemies(ctx) {
-    if (this.enemy) this.enemy.draw(ctx, this.knight.floor);
+    for (const e of this.enemies) e.draw(ctx, this.knight.floor);
     for (const p of this.effects) { ctx.globalAlpha = p.life / .4; ctx.fillStyle = '#d8a3ee'; ctx.fillRect(p.x, p.y, 3, 3); }
     ctx.globalAlpha = 1;
   }

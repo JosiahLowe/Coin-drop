@@ -7,12 +7,16 @@ No runtime dependencies, external assets, or build step.
 ## Play
 
 Open `index.html` in a modern browser, including Safari on iPhone. Play starts
-automatically. Move the knight left or right to choose the drop position,
-then tap **Drop Coin** to add a coin at the highlighted marker. Every coin that falls over the
-bottom edge into the collection area adds one available coin. Tap **↺** to reset the
-balance to zero and Used counter to zero and refill both surfaces with 64 coins in sparse rows and two small stacks. The Used
-counter tracks tokens you drop, excluding the starting pile. Reset keeps the aim aligned with the knight. Drops cost one available coin;
-the starting balance is zero. The existing COINS counter is the only wallet.
+automatically. Defeat slimes to feed one physical coin into the rear slot beneath
+each slime's death position. Position kills to work different parts of the pile.
+Enemy deaths do not award wallet coins. Machine collections add one coin to the
+existing COINS balance, which starts at zero. The retained manual Drop Coin
+button costs one collected coin per drop; it cannot spawn free coins.
+
+Tap **↺** to refill the machine with 64 coins in sparse rows and two small stacks,
+clear queued feeds, and reset COINS and USED to zero. USED counts coins fed into
+the machine from either source, excluding the starting pile. This machine reset
+does not reset combat. The GAME OVER Restart button resets combat and waves only.
 
 For local HTTP hosting, run `python3 -m http.server 8000` in this directory
 and open `http://localhost:8000`.
@@ -26,21 +30,20 @@ the other arrow to reverse; sliding off the arrows stops movement until
 the finger returns. Release to stop; jumping requires a
 new press after landing. Switching away clears held controls.
 
-The geometric knight has a helmet, a walking stride, a jumping pose, and an
+The geometric knight has a helmet, a walking stride, a jumping pose, and a
 permanently extended sword. The stone walkway shares the machine's horizontal
 bounds, but `knight.js` owns its movement and gravity. Both canvases use the
-same animation loop. The coin aimer follows the knight’s horizontal position directly; jumping
-does not change the aim. All movement, jump, drop, and reset controls sit below the coin pusher.
+same animation loop. The manual coin aimer follows the knight’s horizontal position; jumping
+does not change it. Enemy-generated coins instead use each enemy’s death position. All movement, jump, drop, and reset controls sit below the coin pusher.
 Both coin decks are shortened by one coin diameter (28 simulation units)
 without changing coin size, the pusher stroke, or the physics rules. The Drop Coin button still spawns coins. Reset refills
 the coin machine and does not reposition the knight.
 
-## Combat and health (Phase 3)
+## Combat and health
 
 Position the sword to hit purple slimes automatically; there is no attack
 button. Slimes have 2 HP, move at half the knight's speed, flash and recoil
-when hit, and award exactly 1 available coin on death. Rewards go directly
-into COINS rather than spawning machine coins. Sword hits deal 1 damage with
+when hit, and feed exactly one machine coin on death. Sword hits deal 1 damage with
 a 0.4-second per-enemy cooldown. Sword collision is resolved before body
 contact, and a struck slime cannot hurt the knight during that cooldown.
 The sword hitbox follows the visible blade, facing direction, and jumping pose.
@@ -55,20 +58,35 @@ Restart button appear below the machine. Restart restores the knight and
 combat, leaving machine coins, motion, counters, and available balance intact.
 The separate ↺ button still resets the machine and balance to zero.
 
-One slime initially enters from a distant edge. After a kill, a replacement
-spawns after three seconds, alternating sides where possible and choosing the
-far edge if the knight is too close. This temporary spawner is separate from
-combat; there are no waves, equipment, additional enemies, or progression.
+## Enemy waves (Phase 4)
 
-`combat.js` separates health, slime movement, the temporary spawner, and combat
-coordination. `COMBAT_CONFIG` holds weapon reach/damage/cooldown, health,
-invulnerability, recoil, spawn delay, and rewards. The existing 120 Hz loop
-updates combat using delta time; the coin simulation and rendering are unchanged.
+Waves contain 3, 4, 5, 6, and 7 slimes initially, increasing by one per wave to
+a maximum of 12. Enemies enter sequentially at two-second intervals, alternating
+sides where possible and choosing the far edge if the knight is too close.
+Remaining enemies includes those not yet spawned. A wave completes only when
+all scheduled enemies have spawned and been defeated.
+
+Each completed wave starts a ten-second quiet period with a countdown. No new
+enemies or free coins appear during this break; movement, jumping, and the
+machine continue. Earned feeds waiting at the 180-active-coin cap still enter
+when space becomes available. The next wave starts automatically.
+
+Death freezes wave timers and all enemies. Restart clears enemies and effects,
+restores the knight, and restarts Wave 1 while preserving machine motion,
+physical coins, queued earned feeds, counters, and collected balance.
+
+`waves.js` owns scheduling and wave counts, separate from slime behavior and
+combat in `combat.js`. `WAVE_CONFIG` controls counts, cap, intervals, and quiet
+duration. `COMBAT_CONFIG` retains combat tuning. The shared 120 Hz update loop
+runs all timers with delta time. The coin physics and rendering are unchanged.
+The shared `spawnCoin(x)` uses the normal rear entry for both reward and paid
+manual drops. Defeat guards prevent duplicate feeds, including when the machine
+is full. There are no additional enemy types, treasure, upgrades, or progression.
 
 ## Verification
 
 With Node, Playwright, and Chromium installed, run `node tests/phase1.cjs`
-and `node tests/combat.cjs`.
+`node tests/combat.cjs`, and `node tests/waves.cjs`.
 Set `CHROMIUM_PATH` if Chromium is not at `/usr/bin/chromium`. Tests cover
 keyboard movement, facing, stopping, jump/landing, boundaries, multitouch, sliding between directions, and
 cancellation, long holds without text selection, focus loss, knight-linked aiming, coin collection/reset/cap,
@@ -77,6 +95,10 @@ Combat tests additionally cover blade facing and hits, cooldowns, body damage,
 invulnerability, knockback, jump avoidance, idle defense, rewards and spending,
 death restrictions, restart preserving the machine, touch combat/drop input,
 and matching shared-loop outcomes at 30/60/120 render Hz.
+Wave tests cover left/right death-position feeds, duplicate prevention, full
+machine queuing, scheduled counts and growth cap, spawn spacing, ten-second
+breaks, automatic transitions, multi-enemy invulnerability, timer freezing,
+restart preservation, paid manual drops, and three viewport sizes.
 Real iPhone/Safari testing remains manual.
 
 ## Implementation
