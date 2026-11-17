@@ -47,7 +47,7 @@ let coins = [], score = 0, used = 0, time = 0;
 let pusherY = 235, accumulator = 0, lastTime = null, particles = [];
 const pusherAt = t => 260 - 25 * Math.cos(t * 1.55);
 function coin(x, y, z = 0) {
-  return { x, y, z, vx: 0, vy: 0, vz: 0, angle: Math.random() * Math.PI * 2, falling: false };
+  return { x, y, z, vx: 0, vy: 0, vz: 0, angle: Math.random() * Math.PI * 2, falling: false, tip: 0, pinned: false };
 }
 function reset() {
   time = 0; pusherY = pusherAt(0); coins = []; particles = [];
@@ -81,9 +81,34 @@ function drop() {
   coins.push(c); used++; usedElement.textContent = used;
 }
 function surfaceAt(c) {
-  if (c.y > EDGE + R * .4) return -Infinity;
+  if (c.y > EDGE) return -Infinity;
   if (c.y <= pusherY && c.y >= BACK) return SHELF_HEIGHT;
   return 0;
+}
+// Approximate disc balance: the rim can support an overhang when a quarter
+// resting on its rear half puts the combined center of mass behind the lip.
+function edgeBalance(c, bodies, dt) {
+  const onUpper = Math.abs(c.previousZ - SHELF_HEIGHT) < .6;
+  const height = onUpper ? SHELF_HEIGHT : 0;
+  const lip = onUpper ? pusherY : EDGE;
+  if (Math.abs(c.previousZ - height) > .6 || c.y <= lip || c.y >= lip + R * .9) return null;
+  let weight = 1, moment = c.y - lip;
+  for (const b of bodies) {
+    if (b === c || b.falling || Math.abs(b.previousVz) > 1) continue;
+    if (Math.abs(b.previousZ - (height + THICKNESS)) > .6) continue;
+    if (Math.hypot(b.x - c.x, b.y - c.y) >= R * 1.25 || b.y >= lip) continue;
+    weight++; moment += b.y - lip;
+  }
+  const pinned = weight > 1 && moment / weight <= -.5;
+  c.pinned = pinned;
+  if (pinned) {
+    c.tip = 0;
+    return height;
+  }
+  // Briefly rotate around the lip, then release into gravity. This delay is
+  // tied to support loss, not a random timer, so removing a counterweight matters.
+  c.tip = Math.min(1, c.tip + dt / .24);
+  return c.tip < 1 ? height : null;
 }
 function simulate(dt) {
   time += dt;
@@ -106,7 +131,7 @@ function simulate(dt) {
     const drag = velocity > 0 ? Math.max(0, 1 - friction * dt / velocity) : 0;
     c.vx *= drag; c.vy *= drag;
     c.x += c.vx * dt; c.y += c.vy * dt; c.angle += c.vx * dt / R;
-    c.previousZ = c.z;
+    c.previousZ = c.z; c.previousVz = c.vz; c.pinned = false;
     c.vz -= 680 * dt; c.z += c.vz * dt;
   }
   // Resolve vertical contacts before planar collisions. A falling quarter can
@@ -116,24 +141,28 @@ function simulate(dt) {
     if (c.falling) continue;
     let support = surfaceAt(c), carrier = null;
     if (support > c.previousZ + .6) support = 0;
+    const edge = edgeBalance(c, ordered, dt);
+    if (edge !== null) support = Math.max(support, edge);
     for (const b of ordered) {
       if (b === c || b.falling || b.vz < -1) continue;
       const top = b.z + THICKNESS;
       // Small stacks are stable; taller arrivals tip off and resolve sideways.
-      const floor = surfaceAt(b);
+      const floor = b.pinned ? b.z : surfaceAt(b);
       if (top > floor + THICKNESS || top > c.previousZ + .6 || top < support) continue;
       if ((b.x - c.x) ** 2 + (b.y - c.y) ** 2 < (R * 1.25) ** 2) { support = top; carrier = b; }
     }
     if (c.z <= support) {
       c.z = support; c.vz = 0;
+      if (edge === null) c.tip = 0;
       if (carrier) {
+        c.tip = 0;
         // Stacks move with the quarter beneath them, with no artificial drift.
         c.y += carrier.carryY || 0;
         c.carryY = carrier.carryY || 0;
         c.vx = carrier.vx; c.vy = carrier.vy;
       }
     }
-    if (c.y > EDGE + R * .4 && c.z <= 1) { c.falling = true; c.vy = Math.max(c.vy, 35); }
+    if (c.y > EDGE - R && c.z < -1) { c.falling = true; c.vy = Math.max(c.vy, 35); }
   }
   for (let iteration = 0; iteration < 7; iteration++) {
     for (let i = 0; i < coins.length; i++) {
@@ -187,6 +216,7 @@ function drawCoin(c) {
   ctx.fillStyle = gap > THICKNESS * 2 ? '#0003' : '#0006';
   ctx.beginPath(); ctx.ellipse(c.x + 2, c.y - Math.min(altitude, surface) * .38 + 2, R, R * .8, 0, 0, Math.PI * 2); ctx.fill();
   ctx.translate(c.x, c.y - altitude * .38);
+  if (c.tip > 0) ctx.scale(1, Math.max(.25, Math.cos(c.tip * 1.25)));
   if (c.falling) {
     const scale = Math.max(.3, 1 + c.z / 100); ctx.scale(scale, scale); ctx.globalAlpha = Math.max(0, 1 + c.z / 80);
   }

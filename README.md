@@ -25,7 +25,14 @@ Drops enter through a fixed rear slot. Resting coins grip the upper shelf
 through both strokes. The fixed back wall compresses a crowded pile as the
 shelf returns, while the forward face pushes the lower pile. Coins tumble
 onto the lower deck only when contact pushes them past the shelf lip.
+Quarters can overhang either lip. A quarter pressing on the rear half can pin
+an overhang when their combined center of mass stays over the deck. Removing
+that weight or pushing the pile too far makes the coin tip and fall. This is
+a simplified balance model, with a visible tipping animation.
 Dry friction stops loose coins, and resting stacks have no automatic drift.
+A simplified balance model lets a quarter overhang either lip when another
+quarter weights its rear half. Removing or shifting that counterweight releases
+the overhang; unsupported quarters briefly tip before falling under gravity.
 Coins that cross the lower front lip fall into the collection tray. The mechanical
 pusher oscillates continuously. Active coins are capped at 180 to bound mobile
 CPU use; elapsed time is discarded when returning from a hidden tab.
