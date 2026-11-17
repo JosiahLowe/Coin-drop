@@ -60,15 +60,18 @@ function surfaceAt(c) {
 }
 function simulate(dt) {
   time += dt;
+  const previousShelfY = pusherY;
   const next = pusherAt(time), delta = next - pusherY, speed = delta / dt;
   pusherY = next;
   for (const c of coins) {
-    // Forward contact carries the pile. The fixed rear retainer prevents
-    // back-drag, so the returning lip withdraws beneath the leading coins.
+    // Test contact against the previous shelf position, then carry the coin
+    // by the full displacement in BOTH directions before checking support.
+    // The rear wall may compress a crowded pile; an isolated coin stays put
+    // relative to the bed throughout the entire cycle.
     c.carryY = 0;
     const grounded = !c.falling && Math.abs(c.vz) < 1;
-    if (grounded && Math.abs(c.z - SHELF_HEIGHT) < .1 && c.y <= pusherY + 1) {
-      c.carryY = Math.max(0, delta); c.y += c.carryY;
+    if (grounded && Math.abs(c.z - SHELF_HEIGHT) < .1 && c.y <= previousShelfY && c.y >= BACK) {
+      c.carryY = delta; c.y += c.carryY;
     }
     // Dry friction stops coins decisively instead of letting them coast forever.
     const velocity = Math.hypot(c.vx, c.vy);
@@ -91,7 +94,7 @@ function simulate(dt) {
       const top = b.z + THICKNESS;
       // Small stacks are stable; taller arrivals tip off and resolve sideways.
       const floor = surfaceAt(b);
-      if (top > floor + THICKNESS * 2 || top > c.previousZ + .6 || top < support) continue;
+      if (top > floor + THICKNESS || top > c.previousZ + .6 || top < support) continue;
       if ((b.x - c.x) ** 2 + (b.y - c.y) ** 2 < (R * 1.25) ** 2) { support = top; carrier = b; }
     }
     if (c.z <= support) {
@@ -150,7 +153,12 @@ function simulate(dt) {
 function drawCoin(c) {
   ctx.save();
   const altitude = Math.max(0, c.z);
-  ctx.fillStyle = '#0004'; ctx.beginPath(); ctx.ellipse(c.x + 3, c.y + 3, R, R * .8, 0, 0, Math.PI * 2); ctx.fill();
+  const surface = Math.max(0, surfaceAt(c));
+  const gap = Math.max(0, c.z - surface);
+  // Resting coins cast a close contact shadow on their own deck. Only coins
+  // actually in the air have a detached shadow beneath them.
+  ctx.fillStyle = gap > THICKNESS * 2 ? '#0003' : '#0006';
+  ctx.beginPath(); ctx.ellipse(c.x + 2, c.y - Math.min(altitude, surface) * .38 + 2, R, R * .8, 0, 0, Math.PI * 2); ctx.fill();
   ctx.translate(c.x, c.y - altitude * .38);
   if (c.falling) {
     const scale = Math.max(.3, 1 + c.z / 100); ctx.scale(scale, scale); ctx.globalAlpha = Math.max(0, 1 + c.z / 80);
@@ -162,7 +170,7 @@ function drawCoin(c) {
   ctx.strokeStyle = '#ffe7a4'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(0, 0, R - 2, 0, Math.PI * 2); ctx.stroke();
   ctx.fillStyle = '#956c30'; ctx.font = 'bold 9px sans-serif'; ctx.fillText('25', 0, 3.5); ctx.restore();
 }
-function speedLabel() { return Math.sin(time * 1.55) >= 0 ? 'FORWARD · PUSHING THE LOWER PILE ↓' : 'RETURN · COINS TUMBLE OFF THE SHELF'; }
+function speedLabel() { return Math.sin(time * 1.55) >= 0 ? 'FORWARD · PUSHING THE LOWER PILE ↓' : 'RETURN · MAKING ROOM AT THE BACK'; }
 function draw() {
   ctx.clearRect(0, 0, 460, 540); ctx.textAlign = 'center';
   ctx.fillStyle = '#253a29';
