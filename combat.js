@@ -3,7 +3,7 @@ const COMBAT_CONFIG = {
   sword: { damage: 1, reach: 13, hitCooldown: .4 },
   player: { hearts: 3, invulnerability: 1, knockbackSpeed: 105, knockbackTime: .16 },
   slime: { health: 2, damage: 1, speed: 77.5, radius: 15, height: 32, recoilSpeed: 95, recoilTime: .18 },
-  spawnDelay: 3, reward: 3
+  spawnDelay: 3, reward: 1
 };
 const overlaps = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
 
@@ -44,7 +44,13 @@ class Slime {
   draw(ctx, floor) {
     const squash = Math.sin(this.age * 10) * 1.5;
     ctx.fillStyle = this.hitTimer > 0 && Math.floor(this.hitTimer * 30) % 2 ? '#fff0cf' : '#b17ed1';
-    ctx.beginPath(); ctx.ellipse(this.x, floor - this.config.height / 2, this.config.radius + squash, this.config.height / 2 - squash, 0, 0, Math.PI * 2); ctx.fill();
+    const radius = this.config.radius + squash;
+    ctx.beginPath();
+    ctx.moveTo(this.x - radius, floor);
+    ctx.lineTo(this.x - radius, floor - 12);
+    ctx.ellipse(this.x, floor - 12, radius, this.config.height - 12 - squash, 0, Math.PI, Math.PI * 2);
+    ctx.lineTo(this.x + radius, floor);
+    ctx.closePath(); ctx.fill();
     ctx.fillStyle = '#302638'; ctx.fillRect(this.x - 7, floor - 22, 3, 4); ctx.fillRect(this.x + 4, floor - 22, 3, 4);
   }
 }

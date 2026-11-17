@@ -26,12 +26,12 @@ header{margin-bottom:4px}h1{font-size:26px;margin:2px 0}.stats{padding-bottom:6p
 <body>
 <main>
 <header><div><div class="label">POCKET ARCADE / 001</div><h1>COIN DROP<span>.</span></h1></div></header>
-<div class="stats" aria-label="Game counters"><div><span class="label">USED</span><output id="used" aria-label="Tokens dropped">0</output></div><div class="score"><span class="label">COINS</span><output id="score" aria-label="Available coins">10</output></div></div>
+<div class="stats" aria-label="Game counters"><div><span class="label">USED</span><output id="used" aria-label="Tokens dropped">0</output></div><div class="score"><span class="label">COINS</span><output id="score" aria-label="Available coins">0</output></div></div>
 <section class="machine" aria-label="Dungeon walkway and coin pusher"><div class="dungeon"><div class="bar"><span>DUNGEON WALKWAY</span><span id="hearts" role="status" aria-label="3 of 3 hearts">♥ ♥ ♥</span></div><canvas id="dungeon" width="460" height="150" aria-label="Knight on a stone walkway. Move with arrows or A and D. Jump with Space, Up, or W."></canvas></div><div class="bar"><span>TOP VIEW</span><span class="live">● IN PLAY</span></div><canvas id="game" width="460" height="484" aria-label="Top-down, two-level coin pusher. Drop quarters on the upper shelf, build overlapping piles, and push coins off the lower deck.">Use Drop Coin to play.</canvas></section>
 <div id="game-over" role="status" hidden><strong>GAME OVER</strong><button id="restart" type="button">Restart</button></div>
 <div class="knight-controls" role="group" aria-label="Move knight to aim coins"><button type="button" data-knight="left" aria-label="Move left" aria-pressed="false">←</button><button type="button" data-knight="right" aria-label="Move right" aria-pressed="false">→</button><button type="button" data-knight="jump" aria-label="Jump" aria-pressed="false">JUMP</button></div>
 <div class="controls"><button id="drop" type="button">＋ DROP COIN</button><button id="reset" type="button" aria-label="Reset game" title="Reset game">↺</button></div>
-<p class="hint">Knight: ← → / A D · Jump: Space / ↑ / W<br>Move the knight to aim. Tap to drop. Slimes +3 coins · Collect +1 · Drop −1</p>
+<p class="hint">Knight: ← → / A D · Jump: Space / ↑ / W<br>Move the knight to aim. Tap to drop. Slimes +1 coin · Collect +1 · Drop −1</p>
 <footer><span>NO TOKENS REQUIRED</span><span>JUST ONE MORE DROP ↗</span></footer>
 </main>
 <script src="knight.js"></script>
@@ -49,7 +49,7 @@ function updateAim() {
 const R = 14, THICKNESS = 5, SHELF_HEIGHT = 30, MAX_STACK = 3;
 const EDGE = 389, LEFT = 49, RIGHT = 411, BACK = 110, STEP = 1 / 120;
 const dungeon = new DungeonWalkway(document.getElementById('dungeon'), LEFT, RIGHT);
-const STARTING_COINS = 10;
+const STARTING_COINS = 0;
 let coins = [], score = STARTING_COINS, used = 0, time = 0;
 let pusherY = 207, accumulator = 0, lastTime = null, particles = [];
 let bumpUsed = false, bumpFlash = 0;
@@ -72,22 +72,23 @@ function reset() {
   time = 0; pusherY = pusherAt(0); coins = []; particles = [];
   updateAim();
   bumpUsed = false; bumpFlash = 0;
-  // Close-packed rows cover each playable deck, with a little clearance so
-  // the starting quarters do not intersect each other or the side rails.
+  // Keep half the former grid positions empty for lighter starting piles.
+  // Coin size, row spacing, and the simulation rules stay the same.
   const spacing = R * 2 + .5;
   const rowSpacing = spacing * Math.sqrt(3) / 2;
   function fillSurface(firstY, lastY, z) {
     for (let row = 0, y = firstY; y <= lastY; row++, y += rowSpacing) {
       const offset = row % 2 ? spacing / 2 : 0;
+      let column = 0;
       for (let x = LEFT + R + offset; x <= RIGHT - R; x += spacing) {
-        coins.push(coin(x, y, z));
+        if ((row + column++) % 2 === 0) coins.push(coin(x, y, z));
       }
     }
   }
   fillSurface(BACK + R, pusherY - R * .75, SHELF_HEIGHT);
   fillSurface(pusherY + R + .5, EDGE - R, 0);
-  // Three-high piles on both decks demonstrate the added stack weight.
-  for (const i of [14, 33, 73, 110]) {
+  // Two small three-high piles retain some starting stack weight.
+  for (const i of [14, 33]) {
     const base = coins[i];
     coins.push(coin(base.x + 6, base.y + 3, base.z + THICKNESS));
     coins.push(coin(base.x + 10, base.y, base.z + THICKNESS * 2));

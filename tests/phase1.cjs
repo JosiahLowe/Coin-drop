@@ -8,7 +8,7 @@ const root = path.join(__dirname, '..');
  const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || '/usr/bin/chromium', args: ['--no-sandbox'] });
  try {
   for (const size of [{width:1280,height:900},{width:390,height:844},{width:320,height:667}]) {
-   const page = await browser.newPage({viewport:size,hasTouch:size.width<500});
+   const page = await browser.newPage({viewport:size,hasTouch:true});
    const errors=[]; page.on('pageerror', e=>errors.push(e.message));
    await page.route('http://coin.test/**', route => {
     const requested = new URL(route.request().url()).pathname.slice(1);
@@ -37,7 +37,7 @@ const root = path.join(__dirname, '..');
    const jump=await page.locator('[data-knight=jump]').boundingBox();
    await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:left.x+left.width/2,y:left.y+left.height/2,id:1},{x:jump.x+jump.width/2,y:jump.y+jump.height/2,id:2}]});
    await tick(20);assert((await state()).x<379);assert((await state()).y<122);
-   await cdp.send('Input.dispatchTouchEvent',{type:'touchCancel',touchPoints:[]});
+   await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
    await page.waitForFunction(()=>dungeon.pointers.size===0);
    const released=(await state()).x;await tick(120);assert.equal((await state()).x,released);
    await page.evaluate(()=>window.dispatchEvent(new Event('blur')));assert.equal(await page.evaluate(()=>dungeon.pointers.size),0);
@@ -48,10 +48,28 @@ const root = path.join(__dirname, '..');
    assert.equal(await page.evaluate(()=>dropX), (await state()).x);
    const aimBeforeJump=await page.evaluate(()=>dropX);
    await page.keyboard.press('Space');await tick(15);assert.equal(await page.evaluate(()=>dropX),aimBeforeJump);await tick(120);
+   await page.evaluate(()=>{score=1;}); // Fund one drop independently of combat.
    await page.locator('#drop').click();
    assert.equal(await page.evaluate(()=>coins.at(-1).x), (await state()).x);
    await page.locator('#reset').click();assert.equal(await page.evaluate(()=>dropX), (await state()).x);
    await page.locator('#reset').blur();
+   // One captured finger can slide between directions without lifting.
+   const right=await page.locator('[data-knight=right]').boundingBox();
+   const point=box=>({x:box.x+box.width/2,y:box.y+box.height/2,id:7});
+   await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[point(left)]});
+   await page.waitForFunction(()=>[...dungeon.pointers.values()].includes('left'));
+   await tick(8);const slideStart=(await state()).x;
+   await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[point(right)]});
+   await page.waitForFunction(()=>[...dungeon.pointers.values()].includes('right'));
+   await tick(8);assert((await state()).x>slideStart);assert.equal((await state()).facing,1);
+   await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:right.x,y:right.y+right.height+20,id:7}]});
+   await page.waitForFunction(()=>[...dungeon.pointers.values()].every(a=>a===null));
+   const outside=(await state()).x;await tick(8);assert.equal((await state()).x,outside);
+   await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[point(left)]});
+   await page.waitForFunction(()=>[...dungeon.pointers.values()].includes('left'));
+   await tick(8);assert((await state()).x<outside);
+   await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+   await page.waitForFunction(()=>dungeon.pointers.size===0);
    // Long holds must not select text or open a native context menu. Repeat
    // presses, slide outside the button, and release without stuck movement.
    for (const action of ['left','right','left']) {
@@ -87,15 +105,16 @@ const root = path.join(__dirname, '..');
     for(let i=0;i<120;i++)simulate(STEP);
     if(score<=scoreBeforeSpill||isolated.y!==EDGE-15)throw Error('Edge spill or disconnected coin regression');
     reset();
+    score=60; // Exercise the machine with funded drops, independent of rewards.
     let collected=0;
     for(let i=0;i<3600;i++){
      if(i%60===0)drop();const before=score;simulate(STEP);collected+=score-before;dungeon.update(STEP);
      if(coins.length>180||coins.some(c=>![c.x,c.y,c.z,c.vx,c.vy,c.vz].every(Number.isFinite)))throw Error('Invalid coin physics');
     }
-    reset();draw();dungeon.draw();
-    return {original,collected,reset:score===STARTING_COINS&&used===0&&coins.length===original};
+    const drops=used;reset();draw();dungeon.draw();
+    return {original,collected,drops,reset:score===STARTING_COINS&&used===0&&coins.length===original};
    });
-   assert(physics.original>100);assert(physics.collected>0);assert(physics.reset);
+   assert.equal(physics.original,64);assert.equal(physics.drops,60);assert(physics.reset);
    const layout=await page.evaluate(()=>{
     const d=document.querySelector('#dungeon').getBoundingClientRect(),g=document.querySelector('#game').getBoundingClientRect();
     return {top:d.top,bottom:g.bottom,height:innerHeight,aligned:Math.abs(d.left-g.left)<1&&Math.abs(d.width-g.width)<1,visible:d.top>=0&&g.bottom<=innerHeight,width:document.documentElement.scrollWidth<=innerWidth,touch:getComputedStyle(document.querySelector('[data-knight]')).touchAction,selection:getComputedStyle(document.querySelector('[data-knight]')).userSelect,controlsBelow:document.querySelector('.knight-controls').getBoundingClientRect().top>=g.bottom};

@@ -22,7 +22,7 @@ const path=require('node:path');
     combat.enemy.config.recoilSpeed=0;tick(.3);
     check(combat.enemy.hp===1,'Continuous contact bypassed cooldown');
     const count=coins.length,balance=score;tick(.12);
-    check(!combat.enemy&&score===balance+3&&coins.length===count,'Exactly three currency rewards, no machine coin spawn');
+    check(!combat.enemy&&score===balance+1&&coins.length===count,'Exactly one currency reward, no machine coin spawn');
     tick(2.8);check(!combat.enemy,'Spawn too early');tick(.25);check(combat.enemy,'Respawn missing');
     check(combat.enemy.x<dungeon.x,'Alternating spawn side');
     // Behind body contact damages the player, then invulnerability blocks it.
@@ -53,7 +53,7 @@ const path=require('node:path');
     check(combat.enemy&&combat.enemy.hp===2,'Restart spawn');
     dungeon.keys.add('KeyD');dungeon.update(STEP);check(dungeon.x>230,'Movement after restart');dungeon.clearInput();
     // A single wallet: paid drops, no spending at cap or while dead/empty.
-    reset();const start=score;const beforeDrop=coins.length;drop();
+    reset();check(score===0,'Starting balance must be zero');score=1;const start=score;const beforeDrop=coins.length;drop();
     check(score===start-1&&coins.length===beforeDrop+1&&used===1,'Paid drop');
     score=0;const noFunds=coins.length;drop();check(coins.length===noFunds&&score===0,'Empty wallet drop');
     score=5;coins=Array.from({length:180},()=>coin(230,130,30));drop();check(score===5,'Coin cap spent balance');

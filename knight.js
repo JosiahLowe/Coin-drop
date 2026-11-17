@@ -27,6 +27,16 @@ class DungeonWalkway {
       controls.addEventListener(name, e => e.preventDefault(), { passive: false });
     }
     const releasePointer = e => { this.pointers.delete(e.pointerId); this.refreshButtons(); };
+    window.addEventListener('pointermove', e => {
+      if (!this.pointers.has(e.pointerId) || this.pointers.get(e.pointerId) === 'jump') return;
+      e.preventDefault();
+      // Capture keeps release reliable, so hit-test the finger's actual
+      // location instead of using the originally captured button.
+      const target = document.elementFromPoint(e.clientX, e.clientY)?.closest('[data-knight]');
+      const action = target && controls.contains(target) && !target.disabled ? target.dataset.knight : null;
+      this.pointers.set(e.pointerId, action === 'left' || action === 'right' ? action : null);
+      this.refreshButtons();
+    });
     window.addEventListener('pointerup', releasePointer);
     window.addEventListener('pointercancel', releasePointer);
     // Some touch browsers end a cancelled gesture without a matching
