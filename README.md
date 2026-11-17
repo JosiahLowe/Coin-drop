@@ -6,10 +6,12 @@ No dependencies, external assets, or build step.
 ## Play
 
 Open `index.html` in a modern browser, including Safari on iPhone. Play starts
-automatically. Tap **Drop Coin** to add a coin. Every coin that falls over the
+automatically. Drag **Drag to Aim** left or right to choose the drop position,
+then tap **Drop Coin** to add a coin at the highlighted marker. Every coin that falls over the
 bottom edge into the collection area earns one point. Tap **↺** to reset the
 score and Used counter and restore the starting pile of 55 coins. The Used
-counter tracks tokens you drop, excluding the starting pile. Coins are free.
+counter tracks tokens you drop, excluding the starting pile. Reset also centers
+the aim slider. Coins are free.
 
 For local HTTP hosting, run `python3 -m http.server 8000` in this directory
 and open `http://localhost:8000`.
