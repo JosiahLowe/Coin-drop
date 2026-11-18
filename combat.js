@@ -62,12 +62,16 @@ class DungeonCombat {
   constructor(knight, reward, onChange = () => {}, config = COMBAT_CONFIG) {
     this.knight = knight; this.reward = reward; this.onChange = onChange; this.config = config;
     this.health = new PlayerHealth(config.player); this.waves = new WaveManager();
+    this.originalSwordReach=config.sword.reach;
+    this.runLoot=new RunLoot(amount=>this.awardStoredCoins?.(amount));
     this.powerups=new CombatPowerups(knight,config.sword.reach);
     knight.drawEnemies = ctx => this.drawEnemies(ctx);
     this.restart();
   }
   restart() {
     const k = this.knight;
+    this.runLoot.reset();
+    this.powerups.normalReach=this.originalSwordReach;
     this.powerups.reset();
     this.health.reset(); this.enemies = []; this.effects = []; this.waves.reset();
     k.x = (k.left + k.right) / 2; k.y = k.floor; k.vy = 0; k.facing = 1;
@@ -82,7 +86,7 @@ class DungeonCombat {
   update(dt) {
     if (this.health.dead || this.knight.paused) return;
     const k = this.knight, h = this.health;
-    this.powerups.normalReach=this.config.sword.reach;
+    this.powerups.normalReach=this.runLoot.reach(this.originalSwordReach);
     this.powerups.update(dt,this.bodyBox());
     h.update(dt);
     const shove = Math.min(dt, h.knockback); h.knockback = Math.max(0, h.knockback - dt);
@@ -100,13 +104,24 @@ class DungeonCombat {
     this.enemies = this.enemies.filter(e => !e.defeated);
     for (const e of this.enemies) {
       if (!k.shielded && e.hitTimer <= 1e-8 && overlaps(this.bodyBox(), e.box(k.floor))) {
-        if (h.damage(e.config.damage, k.x >= e.x ? 1 : -1) && h.dead) {
+        if (this.contactDamage(e.config.damage, k.x >= e.x ? 1 : -1) && h.dead) {
           k.disabled = true; k.clearInput(); k.vy = 0;this.powerups.apply(false);
         }
       }
     }
     this.onChange(this);
     k.damageAlpha = h.invulnerable > 0 && Math.floor(h.invulnerable * 14) % 2 ? .3 : 1;
+  }
+  contactDamage(amount,direction){
+    const h=this.health;
+    if(this.knight.paused||this.knight.shielded||h.dead||h.invulnerable>1e-8)return false;
+    if(this.runLoot.armor){this.runLoot.armor--;h.invulnerable=h.config.invulnerability;h.knockback=h.config.knockbackTime;h.direction=direction;return false;}
+    return h.damage(amount,direction);
+  }
+  applyLoot(type){
+    const message=this.runLoot.reward(type);
+    this.powerups.normalReach=this.runLoot.reach(this.originalSwordReach);
+    this.powerups.apply(!this.health.dead);this.onChange(this);return message;
   }
   spawnEnemy(side,spec=this.waves.definition.enemies[0]) {
     if(this.knight.paused)return;

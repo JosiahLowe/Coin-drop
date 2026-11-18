@@ -1,0 +1,25 @@
+const {chromium}=require('playwright'),fs=require('fs');
+(async()=>{const b=await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox']});try{for(const width of [320,390,1280]){const p=await b.newPage({viewport:{width,height:844},hasTouch:true});await p.route('http://test/**',r=>{const f=new URL(r.request().url()).pathname.slice(1)||'index.html';return r.fulfill({body:fs.readFileSync(__dirname+'/../'+f),contentType:f.endsWith('.js')?'application/javascript':'text/html'});});await p.addInitScript(()=>requestAnimationFrame=()=>0);await p.goto('http://test/');console.log(await p.evaluate(()=>{
+const check=(a,m)=>{if(!a)throw Error(m);};const run=combat.runLoot;
+function collect(type,id='test-'+loot.nextId++){const c=Object.assign(coin(230,EDGE+1,-66),{id,loot:type,falling:true});coins.push(c);simulate(STEP);return c;}
+combat.powerups.config={...POWERUP_CONFIG,dropChance:0};
+const body=Object.assign(coin(230,330,0),{id:'waiting',loot:'sword'});coins.push(body);simulate(STEP);check(run.swordLevel===0,'Premature loot');
+const lengths=[dungeon.swordReach];for(let i=1;i<=5;i++){const item=collect('sword');loot.collect(item);check(run.swordLevel===i,'Upgrade duplication');lengths.push(dungeon.swordReach);check(Math.abs(dungeon.swordReach-13*(1+i*.1))<1e-8&&combat.swordBox().w===dungeon.swordReach,'Additive reach');}
+const balance=score;collect('sword');check(run.swordLevel===5&&score===balance+5,'Sword cap reward');
+combat.powerups.activate('sword');check(dungeon.swordReach===19.5&&dungeon.swordDamageMultiplier===2,'Power Sword compatibility');combat.powerups.update(15,{x:0,y:0,w:0,h:0});check(dungeon.swordReach===19.5&&dungeon.swordDamageMultiplier===1,'Boost expiry lost reach');
+// A reach modifier remains compatible if a future configuration uses one.
+combat.powerups.config={...POWERUP_CONFIG,types:{...POWERUP_CONFIG.types,sword:{...POWERUP_CONFIG.types.sword,reachMultiplier:2}}};combat.powerups.activate('sword');check(dungeon.swordReach===39,'Temporary multiplier');combat.powerups.update(15,{x:0,y:0,w:0,h:0});check(dungeon.swordReach===19.5&&run.swordLevel===5,'Multiplier expiry');combat.powerups.config={...POWERUP_CONFIG,dropChance:0};
+collect('potion');check(run.potions===1&&combat.health.hearts===3,'Potion auto consumed');check(!run.usePotion(combat)&&run.potions===1,'Full health potion');
+combat.health.hearts=2;check(run.usePotion(combat)&&run.potions===0&&combat.health.hearts===3,'Potion healing');
+for(let i=0;i<3;i++)collect('potion');const before=score;collect('potion');check(run.potions===3&&score===before+3,'Potion cap');
+for(let i=0;i<3;i++)collect('armor');const beforeArmor=score;collect('armor');check(run.armor===3&&score===beforeArmor+5,'Armor cap');
+combat.health.invulnerable=0;combat.contactDamage(1,1);check(run.armor===2&&combat.health.hearts===3,'Armor block');combat.contactDamage(1,1);check(run.armor===2,'Armor cooldown');combat.powerups.activate('shield');combat.health.invulnerable=0;combat.contactDamage(1,1);check(run.armor===2,'Shield consumed armor');
+combat.powerups.update(10,{x:0,y:0,w:0,h:0});combat.contactDamage(1,1);check(run.armor===1,'Shield expiry armor');
+const prior={...run};combat.waves.advance();check(run.swordLevel===5&&run.potions===3&&run.armor===1,'Stage reset');
+setPaused(true);combat.health.hearts=2;check(!run.usePotion(combat),'Paused potion');const id='paused-item';const c=Object.assign(coin(230,EDGE+1,-66),{id,loot:'armor',falling:true});loot.collect(c);check(!loot.collectedIds.has(id),'Paused collection');setPaused(false);
+// Chests use the same capped reward functions, once.
+for(let i=0;i<4;i++){loot.random=()=>i/4+.01;const n=loot.collection.length,oldCoins=score;const chest=collect('chest');loot.collect(chest);check(loot.collection.length===n+1,'Duplicate chest');const type=CHEST_REWARDS[i].type;check(loot.collection.at(-1).reward.type===type,'Chest type');if(type==='sword'||type==='coins')check(score===oldCoins+5,'Chest coins/cap');}
+combat.health.hearts=0;const stored=run.potions;check(!run.usePotion(combat)&&stored===run.potions,'Dead potion');
+const savedCoins=score,machine=coins.filter(c=>!c.token).length;document.getElementById('restart').click();check(run.potions===0&&run.armor===0&&run.swordLevel===0&&dungeon.swordReach===13&&combat.health.hearts===3,'Restart run reset');check(score===savedCoins&&coins.filter(c=>!c.token).length===machine,'Restart machine/balance');
+collect('potion');combat.health.hearts=2;combat.onChange(combat);draw();dungeon.draw();return {width:innerWidth,lengths,potions:run.potions};}));
+await p.locator('#potion').tap();if(await p.evaluate(()=>combat.health.hearts)!==3)throw Error('Touch potion');await p.evaluate(()=>{combat.health.hearts=2;combat.runLoot.potions=1;combat.onChange(combat);});await p.keyboard.press('KeyH');if(await p.evaluate(()=>combat.health.hearts)!==3)throw Error('H potion');await p.screenshot({path:`/tmp/progression-${width}.png`});await p.close();}}finally{await b.close();}})().catch(e=>{console.error(e);process.exitCode=1});

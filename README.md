@@ -104,11 +104,11 @@ Potions and keys are light; swords and armor resist more; chests are heaviest.
 Only falling over the front edge collects an item. `loot.collection` holds
 session-only records with `id` and `type`; `loot-collected` CustomEvents carry
 the same identity. Short queued notifications appear below the controls and
-do not cover the machine. No full inventory, use, equipping, or key effects exist.
+do not cover the machine. No full inventory or key effects exist. Phase 7 applies run rewards automatically.
 
 A collected chest records one nested reward with its own identity: a potion,
 sword, armor, or five stored coins, chosen from `CHEST_REWARDS`. Item rewards
-are recorded rather than equipped or spawned back into the machine. Chest
+use the same run-reward functions as ordinary loot, without respawning machine items. Chest
 collection is guarded by ID so it cannot reroll or pay twice.
 
 Combat restart preserves physical loot, pending loot, collection records, and
@@ -204,3 +204,40 @@ refresh, pause, stage persistence, and death/restart checks across phone and
 desktop viewport sizes. Existing combat regression tests disable random drops
 to keep their baseline comparisons deterministic. Real iPhone testing remains
 manual.
+
+## Run loot rewards and potions (Phase 7)
+
+`progression.js` owns current-run rewards, applied by the existing guarded
+physical collection pipeline. Items must cross the collection edge and finish
+falling before rewards apply. Chests choose one reward from the existing table
+and use the same potion/sword/armor handlers. IDs prevent duplicate payouts.
+Loot definitions, weights, artwork, placement schedule, and physics are unchanged.
+
+Potions store up to three. Tap the 56×44px flask button beside the hearts, or
+press H, to consume one and restore one missing heart. Full health, zero potions,
+pause, or death prevent use. Excess potions convert into three stored coins.
+
+Each sword adds exactly 10% of the original 13-unit reach, for levels 0–5:
+13, 14.3, 15.6, 16.9, 18.2, and 19.5. Visual blade and hitbox use the same value.
+Extra swords at level five grant five stored coins and a maximum-level notice.
+The existing Power Sword temporary boost still doubles damage, not reach.
+Temporary reach multipliers, if configured later, multiply the upgraded base
+without changing the permanent level; expiration restores that upgraded base.
+
+Armor stores up to three charges. One charge absorbs a contact hit and triggers
+the normal invulnerability/knockback timing. A temporary Shield takes priority
+without consuming armor. Extra armor grants five stored coins. The compact HUD
+shows potion quantity, armor charges, and sword level without an inventory menu.
+
+Stage transitions retain run rewards. Combat Restart resets sword level, armor,
+and potions, clears temporary boosts separately, and restores hearts; machine
+coins, stored balance, and existing loot/stage restart rules remain as before.
+The separate machine reset does not reset combat upgrades. No cross-run save,
+shop, spending, potion inventory screen, or new loot types are implemented.
+
+Run `node tests/progression.cjs` for physical reward boundaries, additive reach
+and caps, overflow conversions, chest routing/duplication, temporary-boost
+compatibility, armor/shield precedence, pause, restart, and real touch/H potion
+activation at phone and desktop sizes. Existing movement, combat, power-up,
+stage, loot-physics, and layout suites also remain available. Real iPhone/Safari
+verification remains manual.

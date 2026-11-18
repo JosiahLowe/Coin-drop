@@ -23,7 +23,7 @@ class PhysicalLoot {
     if(type)this.pending.push({id:'loot-'+this.nextId++,type,lane:((wave+1)/2%3+1)/4});
   }
   collect(body) {
-    if(!body.falling || !body.loot || this.collectedIds.has(body.id))return;
+    if(this.isPaused?.() || (this.canCollect&&!this.canCollect(body)) || !body.falling || !body.loot || this.collectedIds.has(body.id))return;
     this.collectedIds.add(body.id);
     const event={id:body.id,type:body.loot};
     let message='Collected '+LOOT_TYPES[body.loot].name;
@@ -33,6 +33,9 @@ class PhysicalLoot {
       if(choice.type==='coins')this.awardCoins(choice.amount);
       message='Chest: '+(choice.type==='coins'?choice.amount+' stored coins':LOOT_TYPES[choice.type].name);
     }
+    const rewardType=event.reward?.type||event.type;
+    const rewardMessage=this.applyReward?.(rewardType);
+    if(rewardMessage)message=(body.loot==='chest'?'Chest: ':'')+rewardMessage;
     this.collection.push(event);
     window.dispatchEvent(new CustomEvent('loot-collected',{detail:structuredClone(event)}));
     this.messages.push(message);this.update(0);

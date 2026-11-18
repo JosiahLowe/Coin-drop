@@ -38,7 +38,7 @@ coins=[];const sword=item('sword'),before=loot.collection.length;simulate(STEP);
 sword.x=230;sword.y=EDGE+1;sword.z=-66;sword.falling=true;simulate(STEP);loot.collect(sword);
 check(!coins.includes(sword)&&loot.collection.length===before+1,'Exactly-once collection');
 check(events.at(-1).id===sword.id&&events.at(-1).type==='sword','Identity event');
-check(document.getElementById('loot-notice').textContent.includes('Iron Sword'),'Notification');
+check(document.getElementById('loot-notice').textContent.includes('Sword'),'Notification');
 // Test every configured chest outcome deterministically, never rerolling collected chests.
 for(let i=0;i<CHEST_REWARDS.length;i++){
  coins=[];const chest=item('chest');chest.falling=true;chest.y=EDGE+1;chest.z=-66;loot.random=()=>i/CHEST_REWARDS.length+.01;
