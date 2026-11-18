@@ -18,7 +18,7 @@ class CombatPowerups {
     this.knight.shielded=!!(enabled&&this.active?.type==='shield');
   }
   rollDrop(x){
-    if(this.knight.paused||this.knight.disabled||this.random()>=this.config.dropChance)return;
+    if(this.active||this.pickups.length||this.knight.paused||this.knight.disabled||this.random()>=this.config.dropChance)return;
     const types=Object.keys(this.config.types),type=types[Math.min(types.length-1,Math.floor(this.random()*types.length))];
     this.pickups.push({type,x:Math.max(this.knight.left+9,Math.min(this.knight.right-9,x)),y:this.knight.floor-10,remaining:this.config.groundLifetime});
   }

@@ -2,8 +2,8 @@ const {chromium}=require('playwright'),fs=require('fs');
 (async()=>{const browser=await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox']});try{for(const width of [320,390,1280]){const p=await browser.newPage({viewport:{width,height:844},hasTouch:true});await p.route('http://test/**',r=>{const f=new URL(r.request().url()).pathname.slice(1)||'index.html';return r.fulfill({body:fs.readFileSync(__dirname+'/../'+f),contentType:f.endsWith('.js')?'application/javascript':'text/html'});});await p.addInitScript(()=>requestAnimationFrame=()=>0);await p.goto('http://test/');console.log(await p.evaluate(()=>{
 const check=(a,m)=>{if(!a)throw Error(m);};const boosts=combat.powerups;
 // Deterministic rolls cover the probability threshold and all selections.
-let successes=0;for(let i=0;i<1000;i++){let roll=0;boosts.random=()=>roll++===0?(i+.5)/1000:.1;boosts.rollDrop(100);}
-check(boosts.pickups.length===150,'15% probability');check(boosts.pickups.every(p=>p.y===dungeon.floor-10),'Not on walkway');
+let successes=0;for(let i=0;i<1000;i++){let roll=0;boosts.random=()=>roll++===0?(i+.5)/1000:.1;boosts.rollDrop(100);successes+=boosts.pickups.length;boosts.pickups=[];}
+check(successes===150,'15% probability');boosts.random=()=>0;boosts.rollDrop(100);boosts.rollDrop(200);check(boosts.pickups.length===1,'Multiple walkway drops');boosts.activate('shield');boosts.pickups=[];boosts.rollDrop(200);check(!boosts.pickups.length,'Drop during active boost');boosts.reset();check(boosts.pickups.every(p=>p.y===dungeon.floor-10),'Not on walkway');
 boosts.reset();boosts.random=()=>0;const enemy=combat.enemies[0],n=coins.length;enemy.hp=0;combat.defeatEnemy(enemy);combat.defeatEnemy(enemy);check(coins.length===n+1&&boosts.pickups.length===1,'Duplicate coin/pickup reward');
 boosts.update(12.1,{x:0,y:0,w:0,h:0});check(!boosts.pickups.length,'Ground expiry');
 boosts.pickups=[{type:'sword',x:dungeon.x,y:dungeon.floor-10,remaining:12}];boosts.update(0,combat.bodyBox());check(!boosts.pickups.length&&boosts.active.type==='sword','Touch collection');

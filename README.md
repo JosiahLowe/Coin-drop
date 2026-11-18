@@ -76,8 +76,7 @@ full capacity or with no free position it waits until a slot is available.
 Only its normal falling collection event advances the stage. Duplicate events
 are ignored, and exactly one replacement is placed or pending. Progression
 preserves enemies, health, coins, loot, spawn-clock remainder, and stored balance.
-There are no wave counts, completion timers, or quiet periods. Loot's existing
-1/3/5/7/9 schedule now observes stage starts and retains its restart ledger.
+There are no wave counts, completion timers, or quiet periods. The initial loot batch retains its restart ledger; stage changes do not reseed it.
 
 The compact pause button, P, or Escape pauses the whole shared fixed-step loop.
 The PAUSED overlay offers touch/click Resume. Inputs are cleared on both pause
@@ -88,9 +87,8 @@ all old tokens with one fresh token, and preserves all other machine/loot state.
 
 ## Physical loot (Phase 5A)
 
-The configurable schedule in `loot.js` feeds a Health Potion on Wave 1, Iron
-Sword on Wave 3, Leather Armor on Wave 5, Treasure Chest on Wave 7, and Rusty
-Key on Wave 9. For testing, they drop from a height of 15 onto the lower deck, one item
+All five loot types start together on the lower deck, spread horizontally.
+The earlier stage schedule is marked fulfilled so it does not add duplicates. For testing, they drop from a height of 15 onto the lower deck, one item
 radius plus six units behind the collection edge. They still need pushing to
 fall off and be collected. They use the same
 body list, gravity, shelf attachment, stacking, contact solver, tipping, and
@@ -112,8 +110,8 @@ use the same run-reward functions as ordinary loot, without respawning machine i
 collection is guarded by ID so it cannot reroll or pay twice.
 
 Combat restart preserves physical loot, pending loot, collection records, and
-the wave ledger. Each scheduled wave drops loot only once per page session,
-including across repeated Wave 1 restarts. The separate machine reset discards
+the wave ledger. The initial loot batch is created only once per page session,
+including across combat restarts. The separate machine reset discards
 physical/pending loot along with machine coins, but keeps the ledger and items
 already collected; it does not award replacements. Reloading starts a new
 session. At the 180-body cap, scheduled loot waits for space. Enemy coin feeds
@@ -241,3 +239,9 @@ compatibility, armor/shield precedence, pause, restart, and real touch/H potion
 activation at phone and desktop sizes. Existing movement, combat, power-up,
 stage, loot-physics, and layout suites also remain available. Real iPhone/Safari
 verification remains manual.
+
+Boost rolls are now eligible only when no boost is active and no uncollected
+walkway pickup exists. Multiple enemy deaths in one step cannot create two
+pickups. Expiry or collection removes the waiting pickup; active boosts must
+expire before further rolls become eligible. The 15% chance applies to eligible
+deaths; the guaranteed physical coin reward is unchanged.

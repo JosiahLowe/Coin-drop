@@ -17,10 +17,12 @@ class PhysicalLoot {
     this.pending=[]; this.nextId=1; this.messages=[]; this.messageTime=0; this.currentMessage='';
   }
   observeWave(wave) {
-    if(this.seenWaves.has(wave))return;
+    if(!this.initialSeeded){
+      this.initialSeeded=true;
+      Object.keys(LOOT_TYPES).forEach((type,index)=>this.pending.push({id:'loot-'+this.nextId++,type,lane:.05+index*.225}));
+      Object.keys(LOOT_SCHEDULE).forEach(stage=>this.seenWaves.add(Number(stage)));
+    }
     this.seenWaves.add(wave);
-    const type=LOOT_SCHEDULE[wave];
-    if(type)this.pending.push({id:'loot-'+this.nextId++,type,lane:((wave+1)/2%3+1)/4});
   }
   collect(body) {
     if(this.isPaused?.() || (this.canCollect&&!this.canCollect(body)) || !body.falling || !body.loot || this.collectedIds.has(body.id))return;

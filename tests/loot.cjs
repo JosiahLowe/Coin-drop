@@ -5,7 +5,8 @@ const page=await browser.newPage({viewport,hasTouch:true});const errors=[];page.
 await page.route('http://coin.test/**',route=>{const f=new URL(route.request().url()).pathname.slice(1)||'index.html';return route.fulfill({body:fs.readFileSync(path.join(__dirname,'..',f)),contentType:f.endsWith('.js')?'application/javascript':'text/html'});});await page.addInitScript(()=>{requestAnimationFrame=()=>0;});await page.goto('http://coin.test/');
 const result=await page.evaluate(()=>{
 const check=(ok,msg)=>{if(!ok)throw Error(msg);};
-check(coins.filter(c=>c.loot==='potion').length===1,'Initial potion entry');
+check(Object.keys(LOOT_TYPES).every(type=>coins.filter(c=>c.loot===type).length===1),'All starting loot');
+check(coins.filter(c=>c.loot).every(c=>c.y>pusherY+c.radius&&c.y<EDGE),'All loot lower deck');
 const initial=coins.find(c=>c.loot);check(initial.y===EDGE-initial.radius-6&&initial.z===15&&initial.y>pusherY+initial.radius,'Lower-deck test feed');
 for(const wave of [1,3,5,7,9]){loot.observeWave(wave);loot.observeWave(wave);flushLootDrops();}
 check(coins.filter(c=>c.loot).length===5,'Schedule duplicate or missing loot');
