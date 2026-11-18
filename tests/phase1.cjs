@@ -12,7 +12,7 @@ const root = path.join(__dirname, '..');
    const errors=[]; page.on('pageerror', e=>errors.push(e.message));
    await page.route('http://coin.test/**', route => {
     const requested = new URL(route.request().url()).pathname.slice(1);
-    const file = ['debris.js','loot.js','knight.js','waves.js','powerups.js','progression.js','combat.js'].includes(requested) ? requested : 'index.html';
+    const file = ['debris.js','rigid.js','loot.js','knight.js','waves.js','powerups.js','progression.js','combat.js'].includes(requested) ? requested : 'index.html';
     return route.fulfill({body:fs.readFileSync(path.join(root,file)),contentType:file.endsWith('.js')?'application/javascript':'text/html'});
    });
    // Drive the real shared loop deterministically, without wall-clock timing.

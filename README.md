@@ -405,3 +405,38 @@ walkway combat boosts retain their chance and single-pickup/active-boost gates.
 exactly-once deaths, shared upper entry, full-machine queuing, and worthless
 trash removal on phone viewports. Legacy reward/combat tests force the coin
 outcome where necessary to isolate their existing assertions.
+
+## Contact-driven debris rotation
+
+`rigid.js` upgrades only planar contacts involving debris. Polygon area integrals
+compute the center of mass and moment of inertia; debris geometry is centered
+on that mass center. Polygon pairs have up to two clipped contact points;
+polygon/disc pairs use their surface contact. Each contact resolves normal and
+Coulomb-limited friction impulses using both linear and angular point velocity.
+The same constraints handle the moving pusher and fixed walls as kinematic
+surfaces. Off-center pusher/wall pressure therefore generates real torque.
+
+Split position constraints correct both translation and angle without injecting
+spin velocity. Per-contact normal/friction impulses persist between adjacent
+physics steps with normal/position validation and are discarded when contacts
+separate. Existing rotational damping is retained; no random spin or scripted
+turning is added. Balanced contacts can cancel, and resting pieces remain still.
+Ordinary disc/disc contacts, vertical shelf/falling logic, loot, collection,
+controls, combat, stage progression, and the 180-body cap remain in place.
+
+A spatial grid restricts debris pair checks. Manifolds and inverse mass/inertia
+are prepared once per 120 Hz step, then local contact anchors are reused through
+the existing seven solver passes. Pause freezes these steps and retained state;
+machine reset clears contact history. A desktop settled stress comparison with
+30 debris and roughly 170 active bodies measured about 4.1 ms/step (previously
+3.7 ms); actual iPhone performance and prolonged crowded gameplay require manual
+playtesting. Artificially overlapped stress starts can have higher transient costs.
+
+`node tests/rigid.cjs` checks geometric inertia, uneven-pusher turning,
+off-center versus balanced pushes, wood pivoting beside a rock, angular wall
+correction, wedge settling and release, pause/cache lifetime, and capped heavy
+workloads. Existing debris tests verify barrier blocking, shape contacts,
+resistance, no spontaneous drift, worthless removal, and long mixed simulation.
+This remains planar rigid-body contact within the original 2.5D game: vertical
+stack support and out-of-plane tipping are approximations, not full 3D rigid
+body dynamics.

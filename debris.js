@@ -5,7 +5,10 @@ const DEBRIS_TYPES={
  wood:{mass:2,friction:1.05,color:'#a6784e',vertices:[[-23,-6],[23,-6],[23,6],[-23,6]]}
 };
 const CLUTTER_CONFIG={lowerCoins:30,debrisCount:9,minimumEach:1,debrisWeights:{bone:4,rock:2,wood:3},attempts:300};
-function debrisBody(type,x,y){const d=DEBRIS_TYPES[type],body=coin(x,y,0);return Object.assign(body,{debris:type,polygon:d.vertices.map(v=>[...v]),mass:d.mass,resistance:d.friction,radius:Math.max(...d.vertices.map(v=>Math.hypot(...v))),angularVelocity:0});}
+function debrisBody(type,x,y){
+ const d=DEBRIS_TYPES[type],body=coin(x,y,0),properties=polygonProperties(d.vertices),vertices=d.vertices.map(([x,y])=>[x-properties.cx,y-properties.cy]);
+ return Object.assign(body,{debris:type,polygon:vertices,mass:d.mass,resistance:d.friction,radius:Math.max(...vertices.map(v=>Math.hypot(...v))),unitInertia:properties.inertia,angularVelocity:0});
+}
 function worldVertices(body){const ca=Math.cos(body.angle),sa=Math.sin(body.angle);return body.polygon.map(([x,y])=>({x:body.x+x*ca-y*sa,y:body.y+x*sa+y*ca}));}
 function bodyExtent(body,axis){return body.polygon?Math.max(...worldVertices(body).map(v=>Math.abs(v[axis]-body[axis]))):radiusOf(body);}
 function shapeContact(a,b){
@@ -23,7 +26,6 @@ function shapeContact(a,b){
  best.point=av?nearestPoint(av,b):nearestPoint(bv,a);return best;
 }
 function supportFootprint(a,b){return (!a.polygon&&!b.polygon)||!!shapeContact(a,b);}
-function rotationalInverse(body,point,nx,ny){if(!body.polygon)return {inverse:0,lever:0};const inertia=(body.load||body.mass)*body.radius*body.radius/3,lever=(point.x-body.x)*ny-(point.y-body.y)*nx;return {inverse:1/inertia,lever};}
 function drawDebris(ctx,c){ctx.save();ctx.translate(c.x,c.y-Math.max(0,c.z)*.38);ctx.rotate(c.angle);if(c.tip)ctx.scale(1,Math.max(.25,Math.cos(c.tip*1.25)));if(c.falling){ctx.globalAlpha=Math.max(0,1+c.z/80);const scale=Math.max(.3,1+c.z/100);ctx.scale(scale,scale);}const d=DEBRIS_TYPES[c.debris];ctx.fillStyle=d.color;ctx.strokeStyle='#26312b';ctx.lineWidth=2;ctx.beginPath();c.polygon.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath();ctx.fill();ctx.stroke();ctx.lineWidth=1;
  if(c.debris==='wood'){ctx.strokeStyle='#68472e';for(const y of [-2,3]){ctx.beginPath();ctx.moveTo(-19,y);ctx.lineTo(19,y);ctx.stroke();}ctx.fillStyle='#d0a777';ctx.fillRect(-21,-4,3,3);}
  else if(c.debris==='rock'){ctx.strokeStyle='#b8c2c5';ctx.beginPath();ctx.moveTo(-10,-5);ctx.lineTo(-3,-10);ctx.lineTo(8,-8);ctx.stroke();}

@@ -43,7 +43,8 @@ header{margin-bottom:4px}h1{font-size:26px;margin:2px 0}.stats{padding-bottom:6p
 <p class="hint">Knight: ← → / A D · Jump: Space / ↑ / W<br>Slime defeats feed the machine at their position. Push NEXT WAVE to advance.</p>
 <footer><span>NO TOKENS REQUIRED</span><span>JUST ONE MORE DROP ↗</span></footer>
 </main>
-<script src="debris.js?v=clutter-1"></script>
+<script src="debris.js?v=rigid-2"></script>
+<script src="rigid.js?v=rigid-1"></script>
 <script src="loot.js?v=trash-rewards-1"></script>
 <script src="knight.js?v=boosts-1"></script>
 <script src="waves.js?v=hops-loot-1"></script>
@@ -113,6 +114,7 @@ function coin(x, y, z = 0) {
   return { x, y, z, vx: 0, vy: 0, vz: 0, angle: Math.random() * Math.PI * 2, falling: false, tip: 0, pinned: false, load: 1, support: null, stackLevel: 0, bumpImpulse: 0, bumpElapsed: 0 };
 }
 function reset() {
+  clearRigidContacts();
   manualDropRemaining=0;
   time = 0; pusherY = pusherAt(0); coins = []; particles = []; pendingCoinDrops = []; loot.pending = [];
   startingPlans=planStartingItems();
@@ -336,7 +338,7 @@ function simulate(dt) {
     const friction = grounded ? 220 * (c.resistance || 1) * (1 + .4 * (c.load - 1)) : 8;
     const drag = velocity > 0 ? Math.max(0, 1 - friction * dt / velocity) : 0;
     c.vx *= drag; c.vy *= drag;
-    c.x += c.vx * dt; c.y += c.vy * dt; if(c.polygon){c.angle+=(c.angularVelocity||0)*dt;c.angularVelocity=(c.angularVelocity||0)*Math.exp(-(grounded?8:1)*dt);if(Math.abs(c.angularVelocity)<.01)c.angularVelocity=0;}else c.angle += c.vx * dt / R;
+    c.x += c.vx * dt; c.y += c.vy * dt; if(c.polygon||c.angularMotion){c.angle+=(c.angularVelocity||0)*dt;c.angularVelocity=(c.angularVelocity||0)*Math.exp(-(grounded?8:1)*dt);if(Math.abs(c.angularVelocity)<.01)c.angularVelocity=0;}else c.angle += c.vx * dt / R;
     c.previousZ = c.z; c.previousVz = c.vz; c.pinned = false;
     c.vz -= 680 * dt; c.z += c.vz * dt;
   }
@@ -374,37 +376,30 @@ function simulate(dt) {
   }
   updateStackLoads();
   for (const c of coins) { c.contactX = c.x; c.contactY = c.y; }
+  beginRigidStep();
   for (let iteration = 0; iteration < 7; iteration++) {
     for (let i = 0; i < coins.length; i++) {
       const a = coins[i]; if (a.falling) continue;
       for (let j = i + 1; j < coins.length; j++) {
         const b = coins[j];
-        if (b.falling || Math.abs(a.z - b.z) >= THICKNESS - .3) continue;
+        if (a.polygon || b.polygon || b.falling || Math.abs(a.z - b.z) >= THICKNESS - .3) continue;
         const dx = b.x - a.x, dy = b.y - a.y;
         const contactRadius=radiusOf(a)+radiusOf(b);
         if (Math.abs(dx) >= contactRadius || Math.abs(dy) >= contactRadius) continue;
         const distance = Math.hypot(dx, dy); if (distance >= contactRadius) continue;
-        const contact=(a.polygon||b.polygon)?shapeContact(a,b):{nx:distance>.001?dx/distance:1,ny:distance>.001?dy/distance:0,depth:contactRadius-distance};if(!contact)continue;
-        const nx=contact.nx,ny=contact.ny;
-        // The same shove displaces a loaded stack less than a single coin.
-        const invA = 1 / a.load, invB = 1 / b.load, invTotal = invA + invB;
-        const overlap = contact.depth;
-        a.x -= nx * overlap * invA / invTotal; a.y -= ny * overlap * invA / invTotal;
-        b.x += nx * overlap * invB / invTotal; b.y += ny * overlap * invB / invTotal;
-        const ar=contact.point?rotationalInverse(a,contact.point,nx,ny):{inverse:0,lever:0};
-        const br=contact.point?rotationalInverse(b,contact.point,nx,ny):{inverse:0,lever:0};
-        const relative = (b.vx - a.vx) * nx + (b.vy - a.vy) * ny + (b.angularVelocity||0)*br.lever-(a.angularVelocity||0)*ar.lever;
-        if (relative < 0) {
-          const impulse = -relative / (invTotal+ar.lever**2*ar.inverse+br.lever**2*br.inverse);
-          a.vx -= impulse * nx * invA; a.vy -= impulse * ny * invA;
-          b.vx += impulse * nx * invB; b.vy += impulse * ny * invB;
-          if(a.polygon)a.angularVelocity=Math.max(-6,Math.min(6,(a.angularVelocity||0)-impulse*ar.lever*ar.inverse));
-          if(b.polygon)b.angularVelocity=Math.max(-6,Math.min(6,(b.angularVelocity||0)+impulse*br.lever*br.inverse));
-        }
+        const nx=distance>.001?dx/distance:1,ny=distance>.001?dy/distance:0;
+        const invA=1/a.load,invB=1/b.load,invTotal=invA+invB,overlap=contactRadius-distance;
+        a.x-=nx*overlap*invA/invTotal;a.y-=ny*overlap*invA/invTotal;
+        b.x+=nx*overlap*invB/invTotal;b.y+=ny*overlap*invB/invTotal;
+        const relative=(b.vx-a.vx)*nx+(b.vy-a.vy)*ny;
+        if(relative<0){const impulse=-relative/invTotal;a.vx-=impulse*nx*invA;a.vy-=impulse*ny*invA;b.vx+=impulse*nx*invB;b.vy+=impulse*ny*invB;}
+
       }
     }
+    solveRigidContacts(coins,pusherY,speed);
     for (const c of coins) {
       if (c.falling) continue;
+      if(c.polygon){if(c.z<SHELF_HEIGHT-1&&speed>0&&Math.abs(c.vz)<1&&c.y-bodyExtent(c,'y')<=pusherY+.1)faceContacts.add(c);continue;}
       if (c.x < LEFT + bodyExtent(c,'x')) { c.x = LEFT + bodyExtent(c,'x'); c.vx = Math.max(0, c.vx); }
       if (c.x > RIGHT - bodyExtent(c,'x')) { c.x = RIGHT - bodyExtent(c,'x'); c.vx = Math.min(0, c.vx); }
       if (c.z < SHELF_HEIGHT - 1 && c.y - bodyExtent(c,'y') < pusherY) {

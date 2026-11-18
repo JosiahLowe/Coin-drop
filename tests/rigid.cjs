@@ -1,0 +1,22 @@
+const {chromium}=require('playwright'),fs=require('fs');
+(async()=>{const b=await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox']});try{for(const width of [320,390]){const p=await b.newPage({viewport:{width,height:844},hasTouch:true});await p.route('http://test/**',r=>{const f=new URL(r.request().url()).pathname.slice(1)||'index.html';return r.fulfill({body:fs.readFileSync(__dirname+'/../'+f),contentType:f.endsWith('.js')?'application/javascript':'text/html'});});await p.addInitScript(()=>requestAnimationFrame=()=>0);await p.goto('http://test/');console.log(await p.evaluate(()=>{
+const check=(v,m)=>{if(!v)throw Error(m);};const steps=n=>{for(let i=0;i<n;i++)simulate(STEP);};
+check(Math.abs(polygonProperties(DEBRIS_TYPES.wood.vertices).inertia-(46**2+12**2)/12)<1e-8,'Polygon inertia');
+function start(){reset();coins=[];clearRigidContacts();time=0;pusherY=pusherAt(0);}
+start();let wood=debrisBody('wood',230,0);wood.angle=.5;wood.y=pusherY+bodyExtent(wood,'y')+.2;coins=[wood];const original=wood.angle;steps(120);const pusherTurn=wood.angle-original;check(Math.abs(pusherTurn)>.1,'Uneven pusher did not turn wood');check(wood.y-bodyExtent(wood,'y')>=pusherY-.5,'Wood penetrated pusher');
+function impact(xs){start();const body=debrisBody('wood',230,330);body.angle=0;coins=[body,...xs.map(x=>{const c=coin(x,311);c.vy=100;return c;})];steps(24);return body.angle;}
+const off=impact([246]),balanced=impact([214,246]);check(Math.abs(off)>.03,'Off-center torque missing');check(Math.abs(balanced)<Math.abs(off)*.5,'Balanced contacts fail to cancel torque');
+start();wood=debrisBody('wood',230,330);wood.angle=0;const rock=debrisBody('rock',265,340);rock.angle=0;const push=coin(214,309);push.vy=120;coins=[wood,rock,push];steps(60);const pinnedAngle=wood.angle;check(Math.abs(pinnedAngle)>.02,'Wood did not pivot beside rock');
+// Angular position constraints at boundaries rotate rather than translating only.
+start();wood=debrisBody('wood',LEFT+18,330);wood.angle=.7;coins=[wood];steps(45);check(wood.x-bodyExtent(wood,'x')>=LEFT-.2,'Wall clipping');check(Math.abs(wood.angle-.7)>.01,'Wall correction has no angular response');
+// A wedged bone withstands end compression; freeing one side permits motion.
+start();const bone=debrisBody('bone',230,330);bone.angle=0;const left=debrisBody('rock',194,330),right=debrisBody('rock',266,330);left.angle=right.angle=0;coins=[bone,left,right];steps(120);const settled={x:bone.x,y:bone.y,angle:bone.angle};steps(120);const drift=Math.hypot(bone.x-settled.x,bone.y-settled.y);check(drift<1,'Resting wedge keeps drifting');coins=coins.filter(c=>c!==right);const driving=coin(bone.x-12,bone.y-19);driving.vy=130;coins.push(driving);steps(90);check(Math.abs(bone.angle-settled.angle)>.01||Math.hypot(bone.x-settled.x,bone.y-settled.y)>1,'Freed bone stayed locked');
+const cacheSize=rigidContacts.size;setPaused(true);const snapshot=JSON.stringify(coins,(key,v)=>key==='support'?undefined:v);frame(10000);check(JSON.stringify(coins,(key,v)=>key==='support'?undefined:v)===snapshot&&rigidContacts.size===cacheSize,'Pause changed rigid state');setPaused(false);
+// Contacts survive adjacent steps, then are discarded once separated.
+start();wood=debrisBody('wood',230,330);wood.angle=0;const c=coin(246,311);c.vy=100;coins=[wood,c];steps(1);check(rigidContacts.size>0,'No contact cache');coins=[];steps(3);check(!rigidContacts.size,'Stale contact cache');
+// Stress the same capped workload with a trash-heavy board, not only nine initial pieces.
+start();for(let i=0;i<30;i++){const piece=debrisBody(['bone','rock','wood'][i%3],80+i%10*30,285+Math.floor(i/10)*34);piece.angle=i*.13;coins.push(piece);}
+for(let i=0;i<150;i++){const row=Math.floor(i/12)%8,x=63+i%12*28,y=124+row*27,z=(y<=pusherY?30:0)+Math.floor(i/96)*5;coins.push(coin(x,y,z));}
+const durations=[];for(let i=0;i<240;i++){const start=performance.now();simulate(STEP);durations.push(performance.now()-start);check(coins.every(c=>[c.x,c.y,c.z,c.vx,c.vy,c.angle,c.angularVelocity||0].every(Number.isFinite)),'Stress instability');}
+durations.sort((a,b)=>a-b);const profile={meanMs:durations.reduce((a,b)=>a+b,0)/durations.length,p95Ms:durations[Math.floor(durations.length*.95)],active:coins.length};
+return {profile,width:innerWidth,pusherTurn,offCenterTurn:off,balancedTurn:balanced,pivotTurn:pinnedAngle,wedgeDrift:drift};}));await p.close();}}finally{await b.close();}})().catch(e=>{console.error(e);process.exitCode=1});
