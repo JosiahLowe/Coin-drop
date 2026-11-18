@@ -26,7 +26,7 @@ header{margin-bottom:4px}h1{font-size:26px;margin:2px 0}.stats{padding-bottom:6p
 .hud-counter{display:flex;align-items:center;gap:3px;white-space:nowrap;font-size:8px}
 .hud-counter output{display:inline;font-size:12px}
 .dungeon-hud #hearts{font-size:11px;letter-spacing:0;white-space:nowrap}
-#loot-notice{font-size:12px;color:#f4d995;padding:5px;text-align:center}.controls{display:flex;justify-content:flex-end}#reset{width:64px}
+#loot-notice{font-size:12px;color:#f4d995;padding:5px;text-align:center}.controls{display:flex;justify-content:flex-end}#reset{width:64px}#drop{flex:1;min-height:52px;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 #pause{min-height:44px;width:44px;background:#2a3e2d;color:#edf3e5;font-size:24px}header{flex-direction:row-reverse}#pause-overlay:not([hidden]){position:fixed;inset:0;z-index:20;background:#101c17dc;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;font-size:28px}#resume{padding:0 30px;background:#ecca72}
 .run-hud{display:flex;align-items:center;justify-content:flex-end;gap:12px;height:44px;padding:0 8px;color:#ecca72;font-size:12px;border-bottom:1px solid #344b37}#potion{min-height:44px;min-width:56px;background:#413046;color:#ffd1dc;font-size:18px;touch-action:manipulation}.dungeon-hud #hearts{font-size:13px}
 </style>
@@ -38,7 +38,7 @@ header{margin-bottom:4px}h1{font-size:26px;margin:2px 0}.stats{padding-bottom:6p
 <section class="machine" aria-label="Dungeon walkway and coin pusher"><div class="dungeon"><div class="bar dungeon-hud"><span id="wave-status" role="status">WAVE 1 · 3 LEFT</span><span class="hud-counter">COLLECTED <output id="score" aria-label="Available collected coins">0</output></span><span class="hud-counter">USED <output id="used" aria-label="Coins fed into the machine">0</output></span></div><div class="run-hud"><span id="hearts" role="status" aria-label="3 of 3 hearts">♥ ♥ ♥</span><button id="potion" type="button" aria-label="Use potion (H)">⚗ <span id="potion-count">0</span></button><span id="armor-count" aria-label="Armor charges">◇ 0</span><span id="sword-level" aria-label="Sword upgrade level">† 0/5</span></div><canvas id="dungeon" width="460" height="150" aria-label="Knight on a stone walkway. Move with arrows or A and D. Jump with Space, Up, or W."></canvas></div><canvas id="game" width="460" height="432" aria-label="Top-down, two-level coin pusher. Drop quarters on the upper shelf, build overlapping piles, and push coins off the lower deck.">Use Drop Coin to play.</canvas></section>
 <div id="game-over" role="status" hidden><strong>GAME OVER</strong><button id="restart" type="button">Restart</button></div>
 <div class="knight-controls" role="group" aria-label="Knight movement"><button type="button" data-knight="left" aria-label="Move left" aria-pressed="false">←</button><button type="button" data-knight="right" aria-label="Move right" aria-pressed="false">→</button><button type="button" data-knight="jump" aria-label="Jump" aria-pressed="false">JUMP</button></div>
-<div class="controls"><button id="drop" type="button" hidden>＋ DROP COIN</button><button id="reset" type="button" aria-label="Reset game" title="Reset game">↺</button></div>
+<div class="controls"><button id="drop" type="button" aria-label="Drop one collected coin (F)">DROP · 1 COIN</button><button id="reset" type="button" aria-label="Reset game" title="Reset game">↺</button></div>
 <div id="loot-notice" role="status" hidden></div>
 <p class="hint">Knight: ← → / A D · Jump: Space / ↑ / W<br>Slime defeats feed the machine at their position. Push NEXT WAVE to advance.</p>
 <footer><span>NO TOKENS REQUIRED</span><span>JUST ONE MORE DROP ↗</span></footer>
@@ -64,13 +64,14 @@ const R = 14, THICKNESS = 5, SHELF_HEIGHT = 30, MAX_STACK = 3;
 const EDGE = 389, LEFT = 49, RIGHT = 411, BACK = 110, STEP = 1 / 120;
 const dungeon = new DungeonWalkway(document.getElementById('dungeon'), LEFT, RIGHT);
 const STARTING_COINS = 0;
-const MANUAL_DROPS_ENABLED = false;
+const MANUAL_DROP_CONFIG = { cooldown:.15 };
+let manualDropRemaining=0;
 let coins = [], score = STARTING_COINS, used = 0, time = 0;
 let pendingCoinDrops = [];
 let machineReady=false;
 const loot=new PhysicalLoot(message=>{
   const notice=document.getElementById('loot-notice');notice.textContent=message;notice.hidden=!message;
-},amount=>{score+=amount;scoreElement.textContent=score;});
+},amount=>{score+=amount;scoreElement.textContent=score;refreshDropButton();});
 const radiusOf = c => c.radius || R;
 let pusherY = 207, accumulator = 0, lastTime = null, particles = [];
 let bumpUsed = false, bumpFlash = 0;
@@ -86,7 +87,7 @@ const combat = new DungeonCombat(dungeon, x => {
     hearts.setAttribute('aria-label', health.hearts + ' of 3 hearts');
   }
   document.getElementById('game-over').hidden = !health.dead;
-  document.getElementById('drop').disabled = true;
+  refreshDropButton(state);
   if(machineReady)loot.observeWave(state.waves.wave);
   document.getElementById('potion-count').textContent=state.runLoot.potions;
   document.getElementById('potion').disabled=health.dead||gamePaused||!state.runLoot.potions||health.hearts>=health.config.hearts;
@@ -98,7 +99,7 @@ const combat = new DungeonCombat(dungeon, x => {
   if (status.textContent !== message) status.textContent = message;
   for (const button of dungeon.buttons) button.disabled = health.dead;
 });
-combat.awardStoredCoins=amount=>{score+=amount;scoreElement.textContent=score;};
+combat.awardStoredCoins=amount=>{score+=amount;scoreElement.textContent=score;refreshDropButton();};
 loot.applyReward=type=>combat.applyLoot(type);
 loot.isPaused=()=>gamePaused;
 loot.canCollect=body=>body.y>EDGE&&(body.z < -65 || body.y > EDGE+65);
@@ -108,6 +109,7 @@ function coin(x, y, z = 0) {
   return { x, y, z, vx: 0, vy: 0, vz: 0, angle: Math.random() * Math.PI * 2, falling: false, tip: 0, pinned: false, load: 1, support: null, stackLevel: 0, bumpImpulse: 0, bumpElapsed: 0 };
 }
 function reset() {
+  manualDropRemaining=0;
   time = 0; pusherY = pusherAt(0); coins = []; particles = []; pendingCoinDrops = []; loot.pending = [];
   updateAim();
   bumpUsed = false; bumpFlash = 0;
@@ -133,7 +135,7 @@ function reset() {
     coins.push(coin(base.x + 10, base.y, base.z + THICKNESS * 2));
   }
   score = STARTING_COINS; used = 0; accumulator = 0;
-  scoreElement.textContent = score; usedElement.textContent = '0';
+  scoreElement.textContent = score;refreshDropButton(); usedElement.textContent = '0';
 }
 // Shared normal rear entry for manual and enemy-generated coins.
 function spawnCoin(x) {
@@ -152,12 +154,19 @@ function flushCoinDrops() {
     spawnCoin(pendingCoinDrops.shift());
   }
 }
+function refreshDropButton(state=combat){
+  document.getElementById('drop').disabled=gamePaused||state.health.dead||score<1||manualDropRemaining>1e-8||coins.length>=180;
+}
+function updateManualDrop(dt){
+  if(gamePaused||combat.health.dead)return;
+  manualDropRemaining=Math.max(0,manualDropRemaining-dt);refreshDropButton();
+}
 function drop() {
-  // Retained for future chambers; Phase 5A has no manual spending.
-  if (!MANUAL_DROPS_ENABLED || combat.health.dead || score < 1) return;
+  if (gamePaused || combat.health.dead || score < 1 || manualDropRemaining>1e-8) return false;
   updateAim();
   if (!spawnCoin(dropX)) return;
-  score--; scoreElement.textContent = score;
+  score--; scoreElement.textContent = score;refreshDropButton();
+  manualDropRemaining=MANUAL_DROP_CONFIG.cooldown;refreshDropButton();return true;
 }
 function flushLootDrops(){
   if(gamePaused)return;
@@ -387,7 +396,7 @@ function simulate(dt) {
     if (c.falling && (c.z < -65 || c.y > EDGE + 65)) {
       if(c.token){collectToken(c);return false;}
       if(c.loot){loot.collect(c);return false;}
-      score++; scoreElement.textContent = score;
+      score++; scoreElement.textContent = score;refreshDropButton();
       particles.push({ x: c.x, y: EDGE + 44, life: 1 }); return false;
     }
     return true;
@@ -492,11 +501,16 @@ function frame(now) {
   if(gamePaused){lastTime=null;requestAnimationFrame(frame);return;}
   if (lastTime !== null) accumulator += Math.min((now - lastTime) / 1000, .05);
   lastTime = now;
-  while (accumulator >= STEP) { simulate(STEP); flushCoinDrops(); flushLootDrops(); ensureToken(); loot.update(STEP); dungeon.update(STEP); combat.update(STEP); accumulator -= STEP; }
+  while (accumulator >= STEP) { updateManualDrop(STEP); simulate(STEP); flushCoinDrops(); flushLootDrops(); ensureToken(); loot.update(STEP); dungeon.update(STEP); combat.update(STEP); accumulator -= STEP; }
   updateAim(); draw(); dungeon.draw(); requestAnimationFrame(frame);
 }
-document.getElementById('restart').addEventListener('click', () => { setPaused(false);combat.restart();resetToken(); updateAim(); document.getElementById('restart').blur(); });
-document.getElementById('drop').addEventListener('click', drop);
+document.getElementById('restart').addEventListener('click', () => { setPaused(false);combat.restart();manualDropRemaining=0;refreshDropButton();resetToken(); updateAim(); document.getElementById('restart').blur(); });
+const dropButton=document.getElementById('drop');
+dropButton.addEventListener('pointerdown',e=>{if(e.button!==0)return;e.preventDefault();drop();});
+dropButton.addEventListener('click',e=>{if(e.detail===0&&!e.pointerType)drop();});
+dropButton.addEventListener('keydown',e=>{if(e.code==='Space'||e.code==='Enter'){e.preventDefault();if(!e.repeat)drop();}});
+dropButton.addEventListener('contextmenu',e=>e.preventDefault());
+window.addEventListener('keydown',e=>{if(e.code==='KeyF'&&!e.repeat&&!e.ctrlKey&&!e.altKey&&!e.metaKey&&!e.target.matches('input,textarea,select,[contenteditable=true]')){e.preventDefault();drop();}});
 document.getElementById('reset').addEventListener('click',()=>{reset();resetToken();});
 document.addEventListener('visibilitychange', () => { lastTime = null; accumulator = 0; dungeon.clearInput(); });
 reset(); machineReady=true; loot.observeWave(combat.waves.wave);flushLootDrops();resetToken(); requestAnimationFrame(frame);

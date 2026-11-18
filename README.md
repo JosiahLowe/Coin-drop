@@ -10,8 +10,8 @@ Open `index.html` in a modern browser, including Safari on iPhone. Play starts
 automatically. Defeat slimes to feed one physical coin into the rear slot beneath
 each slime's death position. Position kills to work different parts of the pile.
 Enemy deaths do not award wallet coins. Machine collections add one coin to the
-existing COINS balance, which starts at zero. Stored coins are not spendable in Phase 5A. The existing manual-drop code
-is retained behind a disabled flag, and its button is hidden.
+existing COINS balance, which starts at zero. Stored coins can be spent using DROP or F: one coin per press, aimed by the
+knight’s current horizontal center. Holding does not repeat.
 
 Tap **↺** to refill the machine with 84 coins in partly filled rows with clearance around the initial potion and two small stacks,
 clear queued feeds and physical loot, and reset COINS and USED to zero. USED counts coins fed into
@@ -36,7 +36,7 @@ bounds, but `knight.js` owns its movement and gravity. Both canvases use the
 same animation loop. The dormant manual coin aimer follows the knight’s horizontal position; jumping
 does not change it. Enemy-generated coins instead use each enemy’s death position. All movement, jump, and reset controls sit below the coin pusher.
 Both coin decks are shortened by one coin diameter (28 simulation units)
-without changing coin size, the pusher stroke, or the physics rules. Manual input is disabled for Phase 5A. Reset refills
+without changing coin size, the pusher stroke, or the physics rules. Manual DROP input spends the existing collected balance. Reset refills
 the coin machine and does not reposition the knight.
 
 ## Combat and health
@@ -272,3 +272,28 @@ combat, Stage 2 preservation, game pause, restart, coin rewards, and disabled
 key spawning at phone and desktop sizes. Legacy combat fixtures use deterministic
 sides and disabled random pauses for repeatable baseline assertions. Existing
 movement, power-up, progression, stage, loot, and layout tests also pass.
+
+## Manual coin dropping
+
+DROP sits below the movement/jump controls and accepts a separate touch while
+movement is held. F is the desktop shortcut; focused DROP also supports Space
+and Enter. Pointer presses use pointer-down coordinates/time rather than waiting
+for release. The shared knight/pusher horizontal coordinate system is used
+one-to-one, clamped to the normal rear entry range. Vertical/jump position has
+no effect on aiming. No separate aiming controls or cursor are added.
+
+Each successful press spends exactly one stored coin and calls the unchanged
+`spawnCoin(x)` used by enemy rewards. A full machine rejects the press without
+spending or queuing a manual coin. `MANUAL_DROP_CONFIG.cooldown` defaults to
+0.15 gameplay seconds; pause and game over prevent spending/spawning, and
+pause freezes the cooldown. Restart clears cooldown while retaining the existing
+stored balance and machine behavior. No manual inputs are queued or repeated.
+The button dims for zero balance, cooldown, cap, pause, or death and updates
+when collected coins become available. Enemy rewards and three-second spawning
+are unchanged.
+
+`node tests/manual-drop.cjs` covers paid drops, moving/jumping/clamped aiming,
+zero balance, exact cooldown, pause/resume, full-machine rejection, restart,
+real multi-touch movement/drop, keyboard input, and no hold repeat at phone and
+desktop sizes. Existing physics tests cover the same coin bodies pushing loot
+and NEXT WAVE tokens. Real iPhone testing remains manual.

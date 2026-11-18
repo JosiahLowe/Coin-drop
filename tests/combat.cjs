@@ -82,7 +82,7 @@ const path=require('node:path');
     dungeon.keys.add('KeyD');dungeon.update(STEP);check(dungeon.x>230,'Movement after restart');dungeon.clearInput();
     // A single wallet: paid drops, no spending at cap or while dead/empty.
     reset();check(score===0,'Starting balance must be zero');score=1;const start=score;const beforeDrop=coins.length;drop();
-    check(score===start&&coins.length===beforeDrop,'Manual spending enabled');
+    check(score===start-1&&coins.length===beforeDrop+1,'Manual paid drop');
     score=0;const noFunds=coins.length;drop();check(coins.length===noFunds&&score===0,'Empty wallet drop');
     score=5;coins=Array.from({length:180},()=>coin(230,130,30));drop();check(score===5,'Coin cap spent balance');
     reset();combat.restart();
@@ -107,7 +107,7 @@ const path=require('node:path');
    await page.waitForFunction(()=>dungeon.pointers.size===0);
    await page.evaluate(()=>{score=1;}); // Retained paid manual drop, separate from death rewards.
    const wallet=await page.evaluate(()=>score);await page.evaluate(()=>drop());
-   assert.equal(await page.evaluate(()=>score),wallet);
+   assert.equal(await page.evaluate(()=>score),wallet-1);
    await page.evaluate(()=>{draw();dungeon.draw();});
    assert.deepEqual(errors,[]);await page.screenshot({path:`/tmp/combat-${viewport.width}.png`});console.log('PASS combat',viewport,result);await page.close();
   }
