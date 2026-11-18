@@ -20,7 +20,7 @@ collectToken(token);check(combat.waves.wave===1,'Contact advanced stage');
 token.y=EDGE+1;token.z=-66;token.falling=true;simulate(STEP);ensureToken();
 check(combat.waves.wave===2&&combat.enemies.includes(survivor),'Transition cleared enemies');
 collectToken(token);check(combat.waves.wave===2,'Duplicate transition');
-check(tokens().length===1,'Replacement token');combat.spawnEnemy(-1);
+check(tokens().length===1&&tokens()[0].z===TOKEN_CONFIG.dropHeight,'Falling replacement token');combat.spawnEnemy(-1);
 check(combat.enemies.at(-1).config.color==='#8d43ec'&&survivor.config.color==='#65c67b','Mixed colors');
 check(combat.enemies.at(-1).hp===2&&survivor.hp===1&&combat.enemies.at(-1).config.speed===survivor.config.speed,'Stage difficulty changed');
 const snap=()=>JSON.stringify({coins,enemies:combat.enemies,waves:combat.waves,health:combat.health,time,pusherY,particles,queued:pendingCoinDrops,lootTimer:loot.messageTime,x:dungeon.x,y:dungeon.y},(k,v)=>k==='support'?undefined:v);
@@ -28,6 +28,10 @@ setPaused(true);const frozen=snap();for(let i=0;i<100;i++)frame(i*1000);spawnCoi
 setPaused(false);frame(999999);check(snap()===frozen,'Resume jumped simulation');frame(1000016);check(time>0,'Resume did not advance');
 setPaused(true);document.getElementById('restart').click();check(!gamePaused&&combat.waves.wave===1&&tokens().length===1,'Paused restart failed');
 check(score===balance,'Restart wallet reset');
+// A full reward queue cannot starve the next stage's token.
+const previous=tokens()[0];coins=Array.from({length:179},(_,i)=>coin(63+i%12*28,280+Math.floor(i/12)*6));coins.push(previous);
+previous.falling=true;previous.y=EDGE+1;previous.z=-66;pendingCoinDrops=Array(20).fill(230);
+simulate(STEP);ensureToken();flushCoinDrops();check(tokens().length===1&&tokens()[0].z===TOKEN_CONFIG.dropHeight,'Crowded replacement starved');
 return {width:innerWidth,stage:combat.waves.wave,tokens:tokens().length};
 }));
 await p.locator('#pause').tap();if(!await p.evaluate(()=>gamePaused))throw Error('P pause');await p.locator('#resume').tap();if(await p.evaluate(()=>gamePaused))throw Error('Touch resume');await p.keyboard.press('Escape');if(!await p.evaluate(()=>gamePaused))throw Error('Escape pause');await p.keyboard.press('Escape');await p.close();}}finally{await b.close();}})().catch(e=>{console.error(e);process.exitCode=1});

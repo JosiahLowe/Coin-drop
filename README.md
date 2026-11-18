@@ -344,3 +344,10 @@ selection, guaranteed/duplicate rewards, upper entry, randomized supported
 placements, restart quantities, hop wind-up/height/landing, airborne damage,
 and pause across phone and desktop viewports. Existing regression suites remain
 available; real iPhone/Safari testing is manual.
+
+Replacement NEXT WAVE tokens now visibly fall from a configurable 85-unit
+height onto the lower pile on stage changes. They no longer require a vacant
+ground footprint, and get the first free physics slot ahead of queued rewards.
+The 180-body cap still applies; full boards wait only until a slot opens.
+Initial/reset tokens prefer the existing clear ground placement, with falling
+entry as a safe fallback. Collection and duplicate-transition guards are unchanged.

@@ -494,13 +494,13 @@ function draw() {
   for (const p of particles) { ctx.globalAlpha = p.life; ctx.fillStyle = '#ffe09a'; ctx.font = 'bold 17px sans-serif'; ctx.fillText('+1', p.x, p.y); }
   ctx.globalAlpha = 1; ctx.restore();
 }
-const TOKEN_CONFIG={radius:21,mass:3,edgeInset:28,x:110};
-let tokenSerial=0,tokenPending=false,transitionedTokens=new Set();
-function resetToken(){coins=coins.filter(c=>!c.token);tokenPending=true;ensureToken();}
+const TOKEN_CONFIG={radius:21,mass:3,edgeInset:28,x:110,dropHeight:85};
+let tokenSerial=0,tokenPending=false,tokenDropIn=false,transitionedTokens=new Set();
+function resetToken(){coins=coins.filter(c=>!c.token);tokenPending=true;tokenDropIn=false;ensureToken();}
 function ensureToken(){
  if(gamePaused||combat.health.dead||!tokenPending||coins.length>=180)return;
  const r=TOKEN_CONFIG.radius;
- for(let y=EDGE-r-TOKEN_CONFIG.edgeInset;y>pusherAt(0)+50+r;y-=8){
+ if(!tokenDropIn)for(let y=EDGE-r-TOKEN_CONFIG.edgeInset;y>pusherAt(0)+50+r;y-=8){
   const positions=[TOKEN_CONFIG.x];for(let offset=8;offset<RIGHT-LEFT;offset+=8)positions.push(TOKEN_CONFIG.x-offset,TOKEN_CONFIG.x+offset);
   for(const x of positions){
    if(x<LEFT+r||x>RIGHT-r)continue;
@@ -508,10 +508,17 @@ function ensureToken(){
    coins.push(Object.assign(coin(x,y,0),{token:true,id:'token-'+ ++tokenSerial,radius:r,mass:TOKEN_CONFIG.mass}));tokenPending=false;return;
   }
  }
+ // A replacement falls onto the lower pile instead of waiting indefinitely
+ // for a completely empty ground footprint. Vertical entry stays collision-safe.
+ const y=EDGE-r-TOKEN_CONFIG.edgeInset,z=TOKEN_CONFIG.dropHeight;
+ for(let x=TOKEN_CONFIG.x;x<=RIGHT-r;x+=8){
+  if(coins.some(c=>!c.falling&&Math.abs(c.z-z)<THICKNESS&&Math.hypot(c.x-x,c.y-y)<radiusOf(c)+r+1))continue;
+  coins.push(Object.assign(coin(x,y,z),{token:true,id:'token-'+ ++tokenSerial,radius:r,mass:TOKEN_CONFIG.mass}));tokenPending=false;tokenDropIn=false;return;
+ }
 }
 function collectToken(c){
  if(gamePaused||!c.falling||c.y<=EDGE||!(c.z < -65 || c.y > EDGE+65)||transitionedTokens.has(c.id))return;
- transitionedTokens.add(c.id);tokenPending=true;
+ transitionedTokens.add(c.id);tokenPending=true;tokenDropIn=true;
  if(!combat.health.dead){combat.waves.advance();loot.messages.push('STAGE '+combat.waves.wave);loot.update(0);combat.onChange(combat);}
 }
 function drawToken(c){
@@ -532,7 +539,7 @@ function frame(now) {
   if(gamePaused){lastTime=null;requestAnimationFrame(frame);return;}
   if (lastTime !== null) accumulator += Math.min((now - lastTime) / 1000, .05);
   lastTime = now;
-  while (accumulator >= STEP) { updateManualDrop(STEP); simulate(STEP); flushCoinDrops(); flushLootDrops(); ensureToken(); loot.update(STEP); dungeon.update(STEP); combat.update(STEP); accumulator -= STEP; }
+  while (accumulator >= STEP) { updateManualDrop(STEP); simulate(STEP); ensureToken(); flushCoinDrops(); flushLootDrops(); loot.update(STEP); dungeon.update(STEP); combat.update(STEP); accumulator -= STEP; }
   updateAim(); draw(); dungeon.draw(); requestAnimationFrame(frame);
 }
 document.getElementById('restart').addEventListener('click', () => { setPaused(false);combat.restart();restartStartingLoot();manualDropRemaining=0;refreshDropButton();resetToken(); updateAim(); document.getElementById('restart').blur(); });
