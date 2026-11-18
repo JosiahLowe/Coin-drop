@@ -12,8 +12,9 @@ class DungeonWalkway {
     // Leave native form controls usable from the keyboard.
     const editing = target => target instanceof Element && target.matches('input, textarea, select, button, [contenteditable="true"]');
     window.addEventListener('keydown', e => {
+      if(e.repeat&&!this.keys.has(e.code))return;
       const action = actionFor(e.code);
-      if (!action || editing(e.target) || e.altKey || e.ctrlKey || e.metaKey) return;
+      if (this.paused || !action || editing(e.target) || e.altKey || e.ctrlKey || e.metaKey) return;
       e.preventDefault();
       if (!this.keys.has(e.code) && !e.repeat && action === 'jump') this.jumpQueued = true;
       this.keys.add(e.code);
@@ -43,6 +44,7 @@ class DungeonWalkway {
     // Track each finger by identifier and use its coordinates, never its target.
     controls.addEventListener('touchstart', e => {
       e.preventDefault();
+      if(this.paused)return;
       for (const touch of e.changedTouches) {
         const action = actionAt(touch.clientX, touch.clientY);
         if (!action) continue;
@@ -70,7 +72,7 @@ class DungeonWalkway {
     window.addEventListener('pointercancel', releasePointer);
     for (const button of this.buttons) {
       button.addEventListener('pointerdown', e => {
-        if (e.pointerType === 'touch' || e.button !== 0) return;
+        if (this.paused || e.pointerType === 'touch' || e.button !== 0) return;
         e.preventDefault();
         // Keep movement usable even if a browser declines capture; window
         // release handlers below still clear the pointer.
@@ -107,7 +109,7 @@ class DungeonWalkway {
   clearInput() { this.keys.clear(); this.pointers.clear(); this.jumpQueued = false; this.refreshButtons(); }
   poseBob() { return this.y < this.floor ? -1 : Math.abs(Math.sin(this.walk)) * 1.5; }
   update(dt) {
-    if (this.disabled) { this.clearInput(); return; }
+    if (this.disabled || this.paused) { this.clearInput(); return; }
     const actions = new Set([...this.keys].map(key => this.actionFor(key) || key).concat([...this.pointers.values()]));
     const direction = Number(actions.has('right')) - Number(actions.has('left'));
     if (direction) this.facing = direction;

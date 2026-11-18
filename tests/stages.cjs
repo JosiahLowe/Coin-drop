@@ -1,0 +1,33 @@
+const {chromium}=require('playwright'),fs=require('fs');
+(async()=>{const b=await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox']});try{for(const width of [320,390,1280]){const p=await b.newPage({viewport:{width,height:844},hasTouch:true});await p.route('http://test/**',r=>{const f=new URL(r.request().url()).pathname.slice(1)||'index.html';return r.fulfill({body:fs.readFileSync(__dirname+'/../'+f),contentType:f.endsWith('.js')?'application/javascript':'text/html'});});await p.addInitScript(()=>requestAnimationFrame=()=>0);await p.goto('http://test/');
+console.log(await p.evaluate(()=>{
+const check=(a,m)=>{if(!a)throw Error(m);};
+const tokens=()=>coins.filter(c=>c.token);
+check(tokens().length===1,'Initial token absent');const token=tokens()[0];
+check(token.z===0&&token.y<EDGE-token.radius&&token.y>pusherY,'Token lower deck');
+check(!coins.some(c=>c!==token&&!c.falling&&Math.abs(c.z)<THICKNESS&&Math.hypot(c.x-token.x,c.y-token.y)<radiusOf(c)+token.radius),'Token overlaps');
+// The existing contact solver pushes the token, rather than granting contact progression.
+const savedBody={...token},savedBodies=coins,savedTime=time,savedPusher=pusherY;
+coins=[token,coin(token.x,token.y-token.radius-R+6)];
+const beforePush=token.y;simulate(STEP);check(token.y>beforePush&&combat.waves.wave===1,'Token contact physics');
+Object.assign(token,savedBody);coins=savedBodies;time=savedTime;pusherY=savedPusher;
+const old=combat.enemies[0];check(!old.config.color,'Base color override');
+const schedule=new WaveManager();let n=0;for(let i=0;i<31;i++)schedule.update(1,()=>n++,0);check(n===11&&schedule.wave===1,'Continuous three-second schedule');
+const beforeScore=score,beforeCount=coins.length;old.hp=0;combat.defeatEnemy(old);combat.defeatEnemy(old);check(coins.length===beforeCount+1&&score===beforeScore,'Death coin duplication');
+combat.restart();const survivor=combat.enemies[0],balance=score;
+check(combat.waves.wave===1,'Restart stage');
+collectToken(token);check(combat.waves.wave===1,'Contact advanced stage');
+token.y=EDGE+1;token.z=-66;token.falling=true;simulate(STEP);ensureToken();
+check(combat.waves.wave===2&&combat.enemies.includes(survivor),'Transition cleared enemies');
+collectToken(token);check(combat.waves.wave===2,'Duplicate transition');
+check(tokens().length===1,'Replacement token');combat.spawnEnemy(-1);
+check(combat.enemies.at(-1).config.color==='#8d43ec'&&!survivor.config.color,'Mixed colors');
+check(combat.enemies.at(-1).hp===survivor.hp&&combat.enemies.at(-1).config.speed===survivor.config.speed,'Stage difficulty changed');
+const snap=()=>JSON.stringify({coins,enemies:combat.enemies,waves:combat.waves,health:combat.health,time,pusherY,particles,queued:pendingCoinDrops,lootTimer:loot.messageTime,x:dungeon.x,y:dungeon.y},(k,v)=>k==='support'?undefined:v);
+setPaused(true);const frozen=snap();for(let i=0;i<100;i++)frame(i*1000);spawnCoin(230);combat.update(3);simulate(STEP);check(snap()===frozen,'Pause moved simulation');
+setPaused(false);frame(999999);check(snap()===frozen,'Resume jumped simulation');frame(1000016);check(time>0,'Resume did not advance');
+setPaused(true);document.getElementById('restart').click();check(!gamePaused&&combat.waves.wave===1&&tokens().length===1,'Paused restart failed');
+check(score===balance,'Restart wallet reset');
+return {width:innerWidth,stage:combat.waves.wave,tokens:tokens().length};
+}));
+await p.locator('#pause').tap();if(!await p.evaluate(()=>gamePaused))throw Error('P pause');await p.locator('#resume').tap();if(await p.evaluate(()=>gamePaused))throw Error('Touch resume');await p.keyboard.press('Escape');if(!await p.evaluate(()=>gamePaused))throw Error('Escape pause');await p.keyboard.press('Escape');await p.close();}}finally{await b.close();}})().catch(e=>{console.error(e);process.exitCode=1});

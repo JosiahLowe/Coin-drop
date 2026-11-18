@@ -27,29 +27,32 @@ header{margin-bottom:4px}h1{font-size:26px;margin:2px 0}.stats{padding-bottom:6p
 .hud-counter output{display:inline;font-size:12px}
 .dungeon-hud #hearts{font-size:11px;letter-spacing:0;white-space:nowrap}
 #loot-notice{font-size:12px;color:#f4d995;padding:5px;text-align:center}.controls{display:flex;justify-content:flex-end}#reset{width:64px}
+#pause{min-height:44px;width:44px;background:#2a3e2d;color:#edf3e5;font-size:24px}header{flex-direction:row-reverse}#pause-overlay:not([hidden]){position:fixed;inset:0;z-index:20;background:#101c17dc;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;font-size:28px}#resume{padding:0 30px;background:#ecca72}
 </style>
 </head>
 <body>
+<div id="pause-overlay" hidden><strong>PAUSED</strong><button id="resume" type="button">RESUME</button></div>
 <main>
-<header><div><div class="label">POCKET ARCADE / 001</div><h1>COIN DROP<span>.</span></h1></div></header>
+<header><button id="pause" type="button" aria-label="Pause game">Ⅱ</button><div><div class="label">POCKET ARCADE / 001</div><h1>COIN DROP<span>.</span></h1></div></header>
 <section class="machine" aria-label="Dungeon walkway and coin pusher"><div class="dungeon"><div class="bar dungeon-hud"><span id="wave-status" role="status">WAVE 1 · 3 LEFT</span><span class="hud-counter">COLLECTED <output id="score" aria-label="Available collected coins">0</output></span><span class="hud-counter">USED <output id="used" aria-label="Coins fed into the machine">0</output></span><span id="hearts" role="status" aria-label="3 of 3 hearts">♥ ♥ ♥</span></div><canvas id="dungeon" width="460" height="150" aria-label="Knight on a stone walkway. Move with arrows or A and D. Jump with Space, Up, or W."></canvas></div><canvas id="game" width="460" height="432" aria-label="Top-down, two-level coin pusher. Drop quarters on the upper shelf, build overlapping piles, and push coins off the lower deck.">Use Drop Coin to play.</canvas></section>
 <div id="game-over" role="status" hidden><strong>GAME OVER</strong><button id="restart" type="button">Restart</button></div>
 <div class="knight-controls" role="group" aria-label="Knight movement"><button type="button" data-knight="left" aria-label="Move left" aria-pressed="false">←</button><button type="button" data-knight="right" aria-label="Move right" aria-pressed="false">→</button><button type="button" data-knight="jump" aria-label="Jump" aria-pressed="false">JUMP</button></div>
 <div class="controls"><button id="drop" type="button" hidden>＋ DROP COIN</button><button id="reset" type="button" aria-label="Reset game" title="Reset game">↺</button></div>
 <div id="loot-notice" role="status" hidden></div>
-<p class="hint">Knight: ← → / A D · Jump: Space / ↑ / W<br>Slime defeats feed the machine at their position. Survive the wave.</p>
+<p class="hint">Knight: ← → / A D · Jump: Space / ↑ / W<br>Slime defeats feed the machine at their position. Push NEXT WAVE to advance.</p>
 <footer><span>NO TOKENS REQUIRED</span><span>JUST ONE MORE DROP ↗</span></footer>
 </main>
 <script src="loot.js?v=loot-1"></script>
-<script src="knight.js?v=tuning-1"></script>
-<script src="waves.js?v=tuning-1"></script>
-<script src="combat.js?v=recoil-2"></script>
+<script src="knight.js?v=stages-1"></script>
+<script src="waves.js?v=stages-1"></script>
+<script src="combat.js?v=stages-1"></script>
 <script>
 'use strict';
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 const scoreElement = document.getElementById('score');
 const usedElement = document.getElementById('used');
+let gamePaused=false;
 let dropX = 230;
 function updateAim() {
   dropX = Math.max(LEFT + R, Math.min(RIGHT - R, dungeon.x));
@@ -83,9 +86,7 @@ const combat = new DungeonCombat(dungeon, x => {
   document.getElementById('drop').disabled = true;
   if(machineReady)loot.observeWave(state.waves.wave);
   const waves = state.waves;
-  const message = waves.state === 'quiet'
-    ? 'W' + waves.wave + ' COMPLETE · ' + Math.ceil(waves.timer) + 's'
-    : 'WAVE ' + waves.wave + ' · ' + waves.remaining + ' LEFT';
+  const message = 'STAGE ' + waves.wave;
   const status = document.getElementById('wave-status');
   if (status.textContent !== message) status.textContent = message;
   for (const button of dungeon.buttons) button.disabled = health.dead;
@@ -105,7 +106,7 @@ function reset() {
       const offset = row % 2 ? spacing / 2 : 0;
       let column=0;
       for (let x = LEFT + R + offset; x <= RIGHT - R; x += spacing) {
-        const leaveLootPocket=z===0 && Math.hypot(x-230,y-(EDGE-24))<40;
+        const leaveLootPocket=z===0 && (Math.hypot(x-230,y-(EDGE-24))<40 || Math.hypot(x-110,y-340)<36);
         if((row+column++)%4!==0 && !leaveLootPocket)coins.push(coin(x, y, z));
       }
     }
@@ -123,6 +124,7 @@ function reset() {
 }
 // Shared normal rear entry for manual and enemy-generated coins.
 function spawnCoin(x) {
+  if(gamePaused)return false;
   if (coins.length >= 180) return false;
   const c = coin(Math.max(LEFT + R, Math.min(RIGHT - R, x)), BACK + R + 6, SHELF_HEIGHT + 85);
   c.vx = 0; c.vy = 0;
@@ -130,6 +132,7 @@ function spawnCoin(x) {
   return true;
 }
 function flushCoinDrops() {
+  if(gamePaused)return;
   // Retain earned drops at the active-coin cap rather than losing rewards
   // or changing the bounded physics workload. Restart preserves this queue.
   while (pendingCoinDrops.length && coins.length < 180) {
@@ -144,6 +147,7 @@ function drop() {
   score--; scoreElement.textContent = score;
 }
 function flushLootDrops(){
+  if(gamePaused)return;
   while(loot.pending.length&&coins.length<180){
     const spec=loot.pending.shift(),d=LOOT_TYPES[spec.type];
     const radius=Math.hypot(d.width,d.height)/2;
@@ -249,6 +253,7 @@ function forwardBump(contacts, speed) {
   return true;
 }
 function simulate(dt) {
+  if(gamePaused)return;
   updateStackLoads();
   time += dt;
   const previousShelfY = pusherY;
@@ -367,6 +372,7 @@ function simulate(dt) {
   if (!bumpUsed && speed >= 28 && forwardBump(faceContacts, speed)) bumpUsed = true;
   coins = coins.filter(c => {
     if (c.falling && (c.z < -65 || c.y > EDGE + 65)) {
+      if(c.token){collectToken(c);return false;}
       if(c.loot){loot.collect(c);return false;}
       score++; scoreElement.textContent = score;
       particles.push({ x: c.x, y: EDGE + 44, life: 1 }); return false;
@@ -377,6 +383,7 @@ function simulate(dt) {
   particles = particles.filter(p => p.life > 0);
 }
 function drawCoin(c) {
+  if(c.token){drawToken(c);return;}
   if(c.loot){drawLoot(ctx,c);return;}
   ctx.save();
   const altitude = Math.max(0, c.z);
@@ -434,17 +441,51 @@ function draw() {
   for (const p of particles) { ctx.globalAlpha = p.life; ctx.fillStyle = '#ffe09a'; ctx.font = 'bold 17px sans-serif'; ctx.fillText('+1', p.x, p.y); }
   ctx.globalAlpha = 1; ctx.restore();
 }
+const TOKEN_CONFIG={radius:21,mass:3,edgeInset:28,x:110};
+let tokenSerial=0,tokenPending=false,transitionedTokens=new Set();
+function resetToken(){coins=coins.filter(c=>!c.token);tokenPending=true;ensureToken();}
+function ensureToken(){
+ if(gamePaused||combat.health.dead||!tokenPending||coins.length>=180)return;
+ const r=TOKEN_CONFIG.radius;
+ for(let y=EDGE-r-TOKEN_CONFIG.edgeInset;y>pusherAt(0)+50+r;y-=8){
+  const positions=[TOKEN_CONFIG.x];for(let offset=8;offset<RIGHT-LEFT;offset+=8)positions.push(TOKEN_CONFIG.x-offset,TOKEN_CONFIG.x+offset);
+  for(const x of positions){
+   if(x<LEFT+r||x>RIGHT-r)continue;
+   if(coins.some(c=>!c.falling&&Math.abs(c.z)<THICKNESS&&Math.hypot(c.x-x,c.y-y)<radiusOf(c)+r+1))continue;
+   coins.push(Object.assign(coin(x,y,0),{token:true,id:'token-'+ ++tokenSerial,radius:r,mass:TOKEN_CONFIG.mass}));tokenPending=false;return;
+  }
+ }
+}
+function collectToken(c){
+ if(gamePaused||!c.falling||c.y<=EDGE||!(c.z < -65 || c.y > EDGE+65)||transitionedTokens.has(c.id))return;
+ transitionedTokens.add(c.id);tokenPending=true;
+ if(!combat.health.dead){combat.waves.advance();loot.messages.push('STAGE '+combat.waves.wave);loot.update(0);combat.onChange(combat);}
+}
+function drawToken(c){
+ ctx.save();ctx.translate(c.x,c.y-Math.max(0,c.z)*.38);if(c.falling)ctx.globalAlpha=Math.max(0,1+c.z/80);
+ ctx.fillStyle='#58d9d1';ctx.strokeStyle='#eafffa';ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,0,c.radius-1,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.fillStyle='#102b2b';ctx.font='bold 10px sans-serif';ctx.textAlign='center';ctx.fillText('NEXT',0,-2);ctx.fillText('WAVE',0,10);ctx.restore();
+}
+function setPaused(value){
+ gamePaused=value&&!combat.health.dead;dungeon.paused=gamePaused;dungeon.clearInput();lastTime=null;
+ document.getElementById('pause-overlay').hidden=!gamePaused;
+ for(const button of dungeon.buttons)button.disabled=gamePaused||combat.health.dead;
+ document.getElementById('reset').disabled=gamePaused;
+}
+document.getElementById('pause').addEventListener('click',()=>setPaused(!gamePaused));
+document.getElementById('resume').addEventListener('click',()=>{setPaused(false);document.getElementById('resume').blur();});
+window.addEventListener('keydown',e=>{if(!e.repeat&&(e.code==='Escape'||e.code==='KeyP')){e.preventDefault();setPaused(!gamePaused);}});
 function frame(now) {
+  if(gamePaused){lastTime=null;requestAnimationFrame(frame);return;}
   if (lastTime !== null) accumulator += Math.min((now - lastTime) / 1000, .05);
   lastTime = now;
-  while (accumulator >= STEP) { simulate(STEP); flushCoinDrops(); flushLootDrops(); loot.update(STEP); dungeon.update(STEP); combat.update(STEP); accumulator -= STEP; }
+  while (accumulator >= STEP) { simulate(STEP); flushCoinDrops(); flushLootDrops(); ensureToken(); loot.update(STEP); dungeon.update(STEP); combat.update(STEP); accumulator -= STEP; }
   updateAim(); draw(); dungeon.draw(); requestAnimationFrame(frame);
 }
-document.getElementById('restart').addEventListener('click', () => { combat.restart(); updateAim(); document.getElementById('restart').blur(); });
+document.getElementById('restart').addEventListener('click', () => { setPaused(false);combat.restart();resetToken(); updateAim(); document.getElementById('restart').blur(); });
 document.getElementById('drop').addEventListener('click', drop);
-document.getElementById('reset').addEventListener('click', reset);
+document.getElementById('reset').addEventListener('click',()=>{reset();resetToken();});
 document.addEventListener('visibilitychange', () => { lastTime = null; accumulator = 0; dungeon.clearInput(); });
-reset(); machineReady=true; loot.observeWave(combat.waves.wave);flushLootDrops(); requestAnimationFrame(frame);
+reset(); machineReady=true; loot.observeWave(combat.waves.wave);flushLootDrops();resetToken(); requestAnimationFrame(frame);
 </script>
 </body>
 </html>

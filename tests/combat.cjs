@@ -73,10 +73,10 @@ const path=require('node:path');
     dungeon.keys.add('KeyD');dungeon.jumpQueued=true;dungeon.update(STEP);drop();combat.update(4);
     check(dungeon.x===saved.x&&combat.enemies[0].x===saved.enemy&&used===saved.used,'Dead player/enemy moved or dropped');
     simulate(STEP);check(time>saved.time,'Machine paused on death');
-    const machine=JSON.stringify(coins),machineTime=time,currentScore=score;
+    const machine=JSON.stringify(coins.filter(c=>!c.token)),machineTime=time,currentScore=score;
     document.querySelector('#restart').click();
     check(combat.health.hearts===3&&!dungeon.disabled&&dungeon.x===230,'Restart player');
-    check(JSON.stringify(coins)===machine&&time===machineTime&&score===currentScore,'Restart reset the machine or currency');
+    check(JSON.stringify(coins.filter(c=>!c.token))===machine&&time===machineTime&&score===currentScore,'Restart reset the machine or currency');
     check(combat.enemies[0]&&combat.enemies[0].hp===2,'Restart spawn');
     dungeon.keys.add('KeyD');dungeon.update(STEP);check(dungeon.x>230,'Movement after restart');dungeon.clearInput();
     // A single wallet: paid drops, no spending at cap or while dead/empty.

@@ -46,7 +46,7 @@ class Slime {
   }
   draw(ctx, floor) {
     const squash = Math.sin(this.age * 10) * 1.5;
-    ctx.fillStyle = this.hitTimer > 0 && Math.floor(this.hitTimer * 30) % 2 ? '#fff0cf' : '#b17ed1';
+    ctx.fillStyle = this.hitTimer > 0 && Math.floor(this.hitTimer * 30) % 2 ? '#fff0cf' : (this.config.color || '#b17ed1');
     const radius = this.config.radius + squash;
     // A rectangular lower body sits flush on the walkway at every squash
     // phase; only the dome above it is rounded.
@@ -71,7 +71,7 @@ class DungeonCombat {
     this.health.reset(); this.enemies = []; this.effects = []; this.waves.reset();
     k.x = (k.left + k.right) / 2; k.y = k.floor; k.vy = 0; k.facing = 1;
     k.walk = 0; k.moving = false; k.disabled = false; k.damageAlpha = 1; k.clearInput();
-    this.waves.update(0, side => this.spawnEnemy(side)); this.onChange(this);
+    this.waves.update(0, (side,spec) => this.spawnEnemy(side,spec)); this.onChange(this);
   }
   swordBox() {
     const k = this.knight, reach = this.config.sword.reach;
@@ -79,14 +79,14 @@ class DungeonCombat {
   }
   bodyBox() { const k = this.knight; return { x: k.x - 10, y: k.y - 48 - k.poseBob(), w: 20, h: 48 }; }
   update(dt) {
-    if (this.health.dead) return;
+    if (this.health.dead || this.knight.paused) return;
     const k = this.knight, h = this.health;
     h.update(dt);
     const shove = Math.min(dt, h.knockback); h.knockback = Math.max(0, h.knockback - dt);
     k.x = Math.max(k.left + 32, Math.min(k.right - 32, k.x + h.direction * this.config.player.knockbackSpeed * shove));
     for (const p of this.effects) { p.life -= dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 160 * dt; }
     this.effects = this.effects.filter(p => p.life > 0);
-    this.waves.update(dt, side => this.spawnEnemy(side));
+    this.waves.update(dt, (side,spec) => this.spawnEnemy(side,spec),this.enemies.length);
     // Every sword collision resolves before any body contact, including
     // when several enemies reach the knight in the same simulation step.
     for (const e of this.enemies) {
@@ -105,17 +105,19 @@ class DungeonCombat {
     this.onChange(this);
     k.damageAlpha = h.invulnerable > 0 && Math.floor(h.invulnerable * 14) % 2 ? .3 : 1;
   }
-  spawnEnemy(side) {
+  spawnEnemy(side,spec=this.waves.definition.enemies[0]) {
+    if(this.knight.paused)return;
     const k = this.knight, radius = this.config.slime.radius;
     let x = side > 0 ? k.right - radius : k.left + radius;
     if (Math.abs(x - k.x) < 110) x = x > (k.left + k.right) / 2 ? k.left + radius : k.right - radius;
-    this.enemies.push(new Slime(x, this.config.slime, Math.sign(k.x - x)));
+    const config={...this.config.slime,...spec.modifiers,...spec.appearance};
+    this.enemies.push(new Slime(x, config, Math.sign(k.x - x)));
   }
   defeatEnemy(e) {
-    if (e.defeated || e.hp > 0) return;
+    if (this.knight.paused || e.defeated || e.hp > 0) return;
     e.defeated = true;
     for (let i = 0; i < 7; i++) this.effects.push({ x: e.x, y: this.knight.floor - 16, vx: Math.cos(i * 2.4) * 38, vy: -30 - i * 5, life: .4 });
-    this.waves.defeatedEnemy(); this.reward(e.x);
+    this.reward(e.x);
   }
   drawEnemies(ctx) {
     for (const e of this.enemies) e.draw(ctx, this.knight.floor);

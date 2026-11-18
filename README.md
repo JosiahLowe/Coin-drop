@@ -13,7 +13,7 @@ Enemy deaths do not award wallet coins. Machine collections add one coin to the
 existing COINS balance, which starts at zero. Stored coins are not spendable in Phase 5A. The existing manual-drop code
 is retained behind a disabled flag, and its button is hidden.
 
-Tap **↺** to refill the machine with 90 coins in partly filled rows with clearance around the initial potion and two small stacks,
+Tap **↺** to refill the machine with 84 coins in partly filled rows with clearance around the initial potion and two small stacks,
 clear queued feeds and physical loot, and reset COINS and USED to zero. USED counts coins fed into
 the machine from either source, excluding the starting pile. This machine reset
 does not reset combat. The GAME OVER Restart button resets combat and waves only.
@@ -58,29 +58,33 @@ Restart button appear below the machine. Restart restores the knight and
 combat, leaving machine coins, motion, counters, and available balance intact.
 The separate ↺ button still resets the machine and balance to zero.
 
-## Enemy waves (Phase 4)
+## Token-driven stages and pause
 
-Waves contain 3, 4, 5, 6, and 7 slimes initially, increasing by one per wave to
-a maximum of 12. Enemies enter sequentially at three-second intervals, alternating
-sides where possible and choosing the far edge if the knight is too close.
-Remaining enemies includes those not yet spawned. A wave completes only when
-all scheduled enemies have spawned and been defeated.
+Stage 1 preserves the existing slime stats, lavender appearance, alternating
+safe spawn sides, and three-second interval. Spawning continues indefinitely,
+up to 12 active enemies (the previous maximum wave population). At the cap,
+the next spawn waits for a vacancy; there is no catch-up burst. Stage 2 changes
+only newly spawned slimes to stronger purple. Old enemies keep their own copied
+configuration. Stage 3 onward uses Stage 2 settings without added difficulty.
+`STAGE_DEFINITIONS` in `waves.js` defines per-stage weighted enemy choices,
+appearance/modifier overrides, interval, and active cap. Types do not accumulate.
 
-Each completed wave starts a ten-second quiet period with a countdown. No new
-enemies or free coins appear during this break; movement, jumping, and the
-machine continue. Earned feeds waiting at the 180-active-coin cap still enter
-when space becomes available. The next wave starts automatically.
+One cyan NEXT WAVE token starts on the lower deck near the front, with a clear
+initial pocket. `TOKEN_CONFIG` controls radius, mass, horizontal position, and
+edge clearance. Placement searches for an unoccupied lower-deck position; at
+full capacity or with no free position it waits until a slot is available.
+Only its normal falling collection event advances the stage. Duplicate events
+are ignored, and exactly one replacement is placed or pending. Progression
+preserves enemies, health, coins, loot, spawn-clock remainder, and stored balance.
+There are no wave counts, completion timers, or quiet periods. Loot's existing
+1/3/5/7/9 schedule now observes stage starts and retains its restart ledger.
 
-Death freezes wave timers and all enemies. Restart clears enemies and effects,
-restores the knight, and restarts Wave 1 while preserving machine motion,
-physical coins, queued earned feeds, counters, and collected balance.
-
-`waves.js` owns scheduling and wave counts, separate from slime behavior and
-combat in `combat.js`. `WAVE_CONFIG` controls counts, cap, intervals, and quiet
-duration. `COMBAT_CONFIG` retains combat tuning. The shared 120 Hz update loop
-runs all timers with delta time. The existing physics and rendering now also handle loot while retaining coin behavior.
-The shared `spawnCoin(x)` uses the normal rear entry for reward coins and the dormant manual-drop code. Defeat guards prevent duplicate feeds, including when the machine
-is full. There are no additional enemy types, equipment effects, or progression.
+The compact pause button, P, or Escape pauses the whole shared fixed-step loop.
+The PAUSED overlay offers touch/click Resume. Inputs are cleared on both pause
+and resume, and the wall-clock baseline is discarded so nothing catches up.
+Machine physics, combat, spawning, tokens, effects and notification clocks freeze.
+Combat restart clears pause, restores Stage 1 and health, clears enemies, replaces
+all old tokens with one fresh token, and preserves all other machine/loot state.
 
 ## Physical loot (Phase 5A)
 
@@ -127,10 +131,9 @@ Combat tests additionally cover blade facing and hits, cooldowns, body damage,
 invulnerability, knockback, jump avoidance, idle defense, rewards and spending restrictions,
 death restrictions, restart preserving the machine, touch combat/drop input,
 and matching shared-loop outcomes at 30/60/120 render Hz.
-Wave tests cover left/right death-position feeds, duplicate prevention, full
-machine queuing, scheduled counts and growth cap, spawn spacing, ten-second
-breaks, automatic transitions, multi-enemy invulnerability, timer freezing,
-restart preservation, disabled manual spending, and three viewport sizes.
+Stage tests (`node tests/stages.cjs`, also run by tests/waves.cjs) cover
+continuous spawning, token placement and collection, mixed enemy colors,
+retained machine state, and desktop/mobile pause and resume.
 Loot tests cover all scheduled types, entry, weighted pushes, friction,
 non-overlap, full-cycle shelf carry, natural tipping, exactly-once collection,
 identity events, notifications, every chest outcome, stored coins, restart
