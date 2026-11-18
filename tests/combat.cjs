@@ -8,7 +8,7 @@ const path=require('node:path');
   for(const viewport of [{width:1280,height:900},{width:390,height:844}]){
    const page=await browser.newPage({viewport,hasTouch:viewport.width<500});const errors=[];page.on('pageerror',e=>errors.push(e.message));
    await page.route('http://coin.test/**',route=>{const file=new URL(route.request().url()).pathname.slice(1)||'index.html';return route.fulfill({body:fs.readFileSync(path.join(__dirname,'..',file)),contentType:file.endsWith('.js')?'application/javascript':'text/html'});});
-   await page.addInitScript(()=>{window.requestAnimationFrame=()=>0;});await page.goto('http://coin.test/');await page.evaluate(()=>{loot.random=()=>.8;});
+   await page.addInitScript(()=>{window.requestAnimationFrame=()=>0;});await page.goto('http://coin.test/');
    await page.evaluate(()=>{combat.powerups.config={...POWERUP_CONFIG,dropChance:0};STAGE_DEFINITIONS[1].randomSides=false;STAGE_DEFINITIONS[1].enemies[0].modifiers.patrolPause.chance=0;combat.restart();});
    const result=await page.evaluate(()=>{
     const check=(condition,message)=>{if(!condition)throw Error(message);};

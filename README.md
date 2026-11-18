@@ -7,8 +7,8 @@ No runtime dependencies, external assets, or build step.
 ## Play
 
 Open `index.html` in a modern browser, including Safari on iPhone. Play starts
-automatically. Defeat slimes to feed trash, coins, or rare loot into the rear entry beneath
-each slime’s death position. Position kills to work different parts of the pile.
+automatically. Defeat slimes to feed one physical coin into the rear slot beneath
+each slime's death position. Position kills to work different parts of the pile.
 Enemy deaths do not award wallet coins. Machine collections add one coin to the
 existing COINS balance, which starts at zero. Stored coins can be spent using DROP or F: one coin per press, aimed by the
 knight’s current horizontal center. Holding does not repeat.
@@ -351,92 +351,3 @@ ground footprint, and get the first free physics slot ahead of queued rewards.
 The 180-body cap still applies; full boards wait only until a slot opens.
 Initial/reset tokens prefer the existing clear ground placement, with falling
 entry as a safe fallback. Collection and duplicate-transition guards are unchanged.
-
-## Lower-deck debris and clutter
-
-`debris.js` extends the existing solver rather than running a separate physics
-loop. Lower-deck starting coins and debris use random positions and rotations
-with non-overlap checks and clearance for starting loot, the token pocket,
-walls, and the collection lip. The upper shelf keeps its existing coin setup.
-`CLUTTER_CONFIG` targets 30 lower coins and 9 debris, with one of each debris
-type first and weighted remaining choices (bone 4, rock 2, wood 3). Placement
-skips excess bodies if safe space runs out instead of forcing an overcrowded
-layout; coins remain the most common objects. Four existing collectibles keep
-their existing randomized safe placement and deferred-entry behavior.
-
-Bones use a long narrow chamfered convex outline, 0.7 mass and 0.85 friction
-factor; wood uses a long rectangular outline, mass 2 and factor 1.05; rocks use
-an angular convex outline, mass 4.5 and factor 1.3. `DEBRIS_TYPES` holds geometry,
-colors, mass, and resistance. Coins and existing loot retain their original
-disc contacts, mass, appearance, entry, and rewards. Debris uses convex polygon
-contacts against discs and polygons, with angular contact velocity, rotational
-inertia, off-center impulse torque, and damped spin. Rotated extents constrain
-walls and the pusher face; support checks use actual footprints. Convex pieces
-can lodge between objects or span planar gaps; full deformable/3D bridging and
-concave bone geometry are not simulated. Debris simply disappears at the normal
-collection boundary without coin payouts or collection rewards.
-
-All bodies still share gravity, the existing seven-pass contact solver, 120 Hz
-updates, and 180-body cap. Polygon work is restricted to nearby pairs involving
-debris; ordinary disc contacts use the original fast path. Combat restart
-preserves existing clutter and coins, while machine reset/new page randomizes
-the lower deck. No crafting, salvage, inventory, or extra rewards are added.
-
-Run `node tests/debris.cjs` for randomized non-overlapping starts, thin plank
-clearance, rotation-aware contacts, off-center torque, mass comparisons, barrier
-blocking, no spontaneous drift, worthless collection, and sustained mixed-body
-simulation at phone sizes. Existing movement, combat, loot, manual-drop, stage,
-hopper, power-up, and progression suites remain applicable. Real iPhone/Safari
-performance and long-session feel still need hands-on playtesting.
-
-## Current enemy reward mix
-
-Each enemy now drops exactly one pusher reward instead of a guaranteed coin
-plus an optional item. `ENEMY_REWARDS` configures mutually exclusive outcomes:
-bones 35%, wood 25%, rocks 15% (75% worthless trash total), coin 20%, potion 2%,
-armor 1.5%, sword 1%, and chest 0.5% (5% items total). Every reward enters from
-above at the enemy death x, clamped for its footprint, through the existing
-spawn/physics system. Full or occupied entries defer rather than discard drops.
-Debris still has no collection reward. Stored coins still increase only from
-physical coin collection or existing loot/chest conversions. Independent
-walkway combat boosts retain their chance and single-pickup/active-boost gates.
-
-`node tests/enemy-rewards.cjs` checks deterministic distribution, each outcome,
-exactly-once deaths, shared upper entry, full-machine queuing, and worthless
-trash removal on phone viewports. Legacy reward/combat tests force the coin
-outcome where necessary to isolate their existing assertions.
-
-## Contact-driven debris rotation
-
-`rigid.js` upgrades only planar contacts involving debris. Polygon area integrals
-compute the center of mass and moment of inertia; debris geometry is centered
-on that mass center. Polygon pairs have up to two clipped contact points;
-polygon/disc pairs use their surface contact. Each contact resolves normal and
-Coulomb-limited friction impulses using both linear and angular point velocity.
-The same constraints handle the moving pusher and fixed walls as kinematic
-surfaces. Off-center pusher/wall pressure therefore generates real torque.
-
-Split position constraints correct both translation and angle without injecting
-spin velocity. Per-contact normal/friction impulses persist between adjacent
-physics steps with normal/position validation and are discarded when contacts
-separate. Existing rotational damping is retained; no random spin or scripted
-turning is added. Balanced contacts can cancel, and resting pieces remain still.
-Ordinary disc/disc contacts, vertical shelf/falling logic, loot, collection,
-controls, combat, stage progression, and the 180-body cap remain in place.
-
-A spatial grid restricts debris pair checks. Manifolds and inverse mass/inertia
-are prepared once per 120 Hz step, then local contact anchors are reused through
-the existing seven solver passes. Pause freezes these steps and retained state;
-machine reset clears contact history. A desktop settled stress comparison with
-30 debris and roughly 170 active bodies measured about 4.1 ms/step (previously
-3.7 ms); actual iPhone performance and prolonged crowded gameplay require manual
-playtesting. Artificially overlapped stress starts can have higher transient costs.
-
-`node tests/rigid.cjs` checks geometric inertia, uneven-pusher turning,
-off-center versus balanced pushes, wood pivoting beside a rock, angular wall
-correction, wedge settling and release, pause/cache lifetime, and capped heavy
-workloads. Existing debris tests verify barrier blocking, shape contacts,
-resistance, no spontaneous drift, worthless removal, and long mixed simulation.
-This remains planar rigid-body contact within the original 2.5D game: vertical
-stack support and out-of-plane tipping are approximations, not full 3D rigid
-body dynamics.

@@ -43,9 +43,7 @@ header{margin-bottom:4px}h1{font-size:26px;margin:2px 0}.stats{padding-bottom:6p
 <p class="hint">Knight: ← → / A D · Jump: Space / ↑ / W<br>Slime defeats feed the machine at their position. Push NEXT WAVE to advance.</p>
 <footer><span>NO TOKENS REQUIRED</span><span>JUST ONE MORE DROP ↗</span></footer>
 </main>
-<script src="debris.js?v=rigid-2"></script>
-<script src="rigid.js?v=rigid-1"></script>
-<script src="loot.js?v=trash-rewards-1"></script>
+<script src="loot.js?v=hops-loot-1"></script>
 <script src="knight.js?v=boosts-1"></script>
 <script src="waves.js?v=hops-loot-1"></script>
 <script src="progression.js?v=run-loot-1"></script>
@@ -80,9 +78,7 @@ let pusherY = 207, accumulator = 0, lastTime = null, particles = [];
 let bumpUsed = false, bumpFlash = 0;
 const pusherAt = t => 232 - 25 * Math.cos(t * 1.55);
 const combat = new DungeonCombat(dungeon, x => {
-  const reward=rollEnemyReward(loot.random);
-  if(reward.kind==='coin'){pendingCoinDrops.push(x);flushCoinDrops();}
-  else {loot.pending.push({id:'drop-'+loot.nextId++,type:reward.type,debris:reward.kind==='debris',entryX:x});flushLootDrops();}
+  pendingCoinDrops.push(x); flushCoinDrops();loot.rollEnemy(x);flushLootDrops();
 }, state => {
   const health = state.health;
   const hearts = document.getElementById('hearts');
@@ -114,7 +110,6 @@ function coin(x, y, z = 0) {
   return { x, y, z, vx: 0, vy: 0, vz: 0, angle: Math.random() * Math.PI * 2, falling: false, tip: 0, pinned: false, load: 1, support: null, stackLevel: 0, bumpImpulse: 0, bumpElapsed: 0 };
 }
 function reset() {
-  clearRigidContacts();
   manualDropRemaining=0;
   time = 0; pusherY = pusherAt(0); coins = []; particles = []; pendingCoinDrops = []; loot.pending = [];
   startingPlans=planStartingItems();
@@ -134,7 +129,13 @@ function reset() {
     }
   }
   fillSurface(BACK + R, pusherY - R * .75, SHELF_HEIGHT);
-  populateLowerClutter();
+  fillSurface(pusherY + R + .5, EDGE - R, 0);
+  // Two small three-high piles retain some starting stack weight.
+  for (const i of [14, 33]) {
+    const base = coins[i];
+    coins.push(coin(base.x + 6, base.y + 3, base.z + THICKNESS));
+    coins.push(coin(base.x + 10, base.y, base.z + THICKNESS * 2));
+  }
   score = STARTING_COINS; used = 0; accumulator = 0;
   scoreElement.textContent = score;refreshDropButton(); usedElement.textContent = '0';
 }
@@ -184,7 +185,7 @@ function planStartingItems(){
 function flushLootDrops(){
  if(gamePaused)return;
  for(let index=0;index<loot.pending.length&&coins.length<180;){
-  const spec=loot.pending[index],d=spec.debris?DEBRIS_TYPES[spec.type]:LOOT_TYPES[spec.type],radius=spec.debris?Math.max(...d.vertices.map(v=>Math.hypot(...v))):Math.hypot(d.width,d.height)/2;
+  const spec=loot.pending[index],d=LOOT_TYPES[spec.type],radius=Math.hypot(d.width,d.height)/2;
   let x,y,z;
   if(spec.entryX!==undefined){
    x=Math.max(LEFT+radius,Math.min(RIGHT-radius,spec.entryX));y=BACK+radius+6;z=SHELF_HEIGHT+85;
@@ -199,8 +200,7 @@ function flushLootDrops(){
    if(!spot){spec.retryAt=time+.5;index++;continue;}
    x=spot.x;y=spot.y;z=0;
   }else{x=LEFT+radius+(RIGHT-LEFT-2*radius)*(spec.lane??.5);y=EDGE-radius-6;z=15;}
-  const body=spec.debris?debrisBody(spec.type,x,y):coin(x,y,z);
-  Object.assign(body,{z,id:spec.id,radius,mass:d.mass,resistance:d.friction,starting:!!spec.starting});if(!spec.debris)body.loot=spec.type;coins.push(body);
+  const body=coin(x,y,z);Object.assign(body,{loot:spec.type,id:spec.id,radius,mass:d.mass,resistance:d.friction,starting:!!spec.starting});coins.push(body);
   loot.pending.splice(index,1);
  }
 }
@@ -225,7 +225,7 @@ function updateStackLoads() {
       if (b === c || b.falling || Math.abs(b.vz) > 1 || b.stackLevel >= MAX_STACK - 1) continue;
       if (Math.abs(c.z - b.z - THICKNESS) > .6) continue;
       const distance = Math.hypot(c.x - b.x, c.y - b.y);
-      if (distance < (radiusOf(c)+radiusOf(b)) * .625 && distance < closest && supportFootprint(c,b)) { c.support = b; closest = distance; }
+      if (distance < (radiusOf(c)+radiusOf(b)) * .625 && distance < closest) { c.support = b; closest = distance; }
     }
     if (c.support) c.stackLevel = c.support.stackLevel + 1;
   }
@@ -338,7 +338,7 @@ function simulate(dt) {
     const friction = grounded ? 220 * (c.resistance || 1) * (1 + .4 * (c.load - 1)) : 8;
     const drag = velocity > 0 ? Math.max(0, 1 - friction * dt / velocity) : 0;
     c.vx *= drag; c.vy *= drag;
-    c.x += c.vx * dt; c.y += c.vy * dt; if(c.polygon||c.angularMotion){c.angle+=(c.angularVelocity||0)*dt;c.angularVelocity=(c.angularVelocity||0)*Math.exp(-(grounded?8:1)*dt);if(Math.abs(c.angularVelocity)<.01)c.angularVelocity=0;}else c.angle += c.vx * dt / R;
+    c.x += c.vx * dt; c.y += c.vy * dt; c.angle += c.vx * dt / R;
     c.previousZ = c.z; c.previousVz = c.vz; c.pinned = false;
     c.vz -= 680 * dt; c.z += c.vz * dt;
   }
@@ -357,7 +357,7 @@ function simulate(dt) {
       // Up to three quarters may rest in one vertical chain. A fourth
       // arrival resolves sideways and can form a neighboring stack.
       if (b.stackLevel >= MAX_STACK - 1 || top > c.previousZ + .6 || top < support) continue;
-      if ((b.x - c.x) ** 2 + (b.y - c.y) ** 2 < ((radiusOf(b)+radiusOf(c)) * .625) ** 2 && supportFootprint(c,b)) { support = top; carrier = b; }
+      if ((b.x - c.x) ** 2 + (b.y - c.y) ** 2 < ((radiusOf(b)+radiusOf(c)) * .625) ** 2) { support = top; carrier = b; }
     }
     if (c.z <= support) {
       c.z = support; c.vz = 0;
@@ -376,39 +376,41 @@ function simulate(dt) {
   }
   updateStackLoads();
   for (const c of coins) { c.contactX = c.x; c.contactY = c.y; }
-  beginRigidStep();
   for (let iteration = 0; iteration < 7; iteration++) {
     for (let i = 0; i < coins.length; i++) {
       const a = coins[i]; if (a.falling) continue;
       for (let j = i + 1; j < coins.length; j++) {
         const b = coins[j];
-        if (a.polygon || b.polygon || b.falling || Math.abs(a.z - b.z) >= THICKNESS - .3) continue;
+        if (b.falling || Math.abs(a.z - b.z) >= THICKNESS - .3) continue;
         const dx = b.x - a.x, dy = b.y - a.y;
         const contactRadius=radiusOf(a)+radiusOf(b);
         if (Math.abs(dx) >= contactRadius || Math.abs(dy) >= contactRadius) continue;
         const distance = Math.hypot(dx, dy); if (distance >= contactRadius) continue;
-        const nx=distance>.001?dx/distance:1,ny=distance>.001?dy/distance:0;
-        const invA=1/a.load,invB=1/b.load,invTotal=invA+invB,overlap=contactRadius-distance;
-        a.x-=nx*overlap*invA/invTotal;a.y-=ny*overlap*invA/invTotal;
-        b.x+=nx*overlap*invB/invTotal;b.y+=ny*overlap*invB/invTotal;
-        const relative=(b.vx-a.vx)*nx+(b.vy-a.vy)*ny;
-        if(relative<0){const impulse=-relative/invTotal;a.vx-=impulse*nx*invA;a.vy-=impulse*ny*invA;b.vx+=impulse*nx*invB;b.vy+=impulse*ny*invB;}
-
+        const nx = distance > .001 ? dx / distance : 1, ny = distance > .001 ? dy / distance : 0;
+        // The same shove displaces a loaded stack less than a single coin.
+        const invA = 1 / a.load, invB = 1 / b.load, invTotal = invA + invB;
+        const overlap = contactRadius - distance;
+        a.x -= nx * overlap * invA / invTotal; a.y -= ny * overlap * invA / invTotal;
+        b.x += nx * overlap * invB / invTotal; b.y += ny * overlap * invB / invTotal;
+        const relative = (b.vx - a.vx) * nx + (b.vy - a.vy) * ny;
+        if (relative < 0) {
+          const impulse = -relative / invTotal;
+          a.vx -= impulse * nx * invA; a.vy -= impulse * ny * invA;
+          b.vx += impulse * nx * invB; b.vy += impulse * ny * invB;
+        }
       }
     }
-    solveRigidContacts(coins,pusherY,speed);
     for (const c of coins) {
       if (c.falling) continue;
-      if(c.polygon){if(c.z<SHELF_HEIGHT-1&&speed>0&&Math.abs(c.vz)<1&&c.y-bodyExtent(c,'y')<=pusherY+.1)faceContacts.add(c);continue;}
-      if (c.x < LEFT + bodyExtent(c,'x')) { c.x = LEFT + bodyExtent(c,'x'); c.vx = Math.max(0, c.vx); }
-      if (c.x > RIGHT - bodyExtent(c,'x')) { c.x = RIGHT - bodyExtent(c,'x'); c.vx = Math.min(0, c.vx); }
-      if (c.z < SHELF_HEIGHT - 1 && c.y - bodyExtent(c,'y') < pusherY) {
+      if (c.x < LEFT + radiusOf(c)) { c.x = LEFT + radiusOf(c); c.vx = Math.max(0, c.vx); }
+      if (c.x > RIGHT - radiusOf(c)) { c.x = RIGHT - radiusOf(c); c.vx = Math.min(0, c.vx); }
+      if (c.z < SHELF_HEIGHT - 1 && c.y - radiusOf(c) < pusherY) {
         // Only actual face contact during a forward stroke can trigger a bump.
         if (speed > 0 && Math.abs(c.vz) < 1) faceContacts.add(c);
-        c.y = pusherY + bodyExtent(c,'y'); c.vy = Math.max(c.vy, speed);
+        c.y = pusherY + radiusOf(c); c.vy = Math.max(c.vy, speed);
       }
-      if (c.z >= SHELF_HEIGHT - 1 && c.y - bodyExtent(c,'y') < BACK) {
-        c.y = BACK + bodyExtent(c,'y'); c.vy = Math.max(c.vy, 0);
+      if (c.z >= SHELF_HEIGHT - 1 && c.y - radiusOf(c) < BACK) {
+        c.y = BACK + radiusOf(c); c.vy = Math.max(c.vy, 0);
       }
     }
   }
@@ -423,7 +425,6 @@ function simulate(dt) {
   if (!bumpUsed && speed >= 28 && forwardBump(faceContacts, speed)) bumpUsed = true;
   coins = coins.filter(c => {
     if (c.falling && (c.z < -65 || c.y > EDGE + 65)) {
-      if(c.debris)return false;
       if(c.token){collectToken(c);return false;}
       if(c.loot){loot.collect(c);return false;}
       score++; scoreElement.textContent = score;refreshDropButton();
@@ -435,7 +436,6 @@ function simulate(dt) {
   particles = particles.filter(p => p.life > 0);
 }
 function drawCoin(c) {
-  if(c.debris){drawDebris(ctx,c);return;}
   if(c.token){drawToken(c);return;}
   if(c.loot){drawLoot(ctx,c);return;}
   ctx.save();
