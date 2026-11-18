@@ -1,0 +1,20 @@
+const {chromium}=require('playwright'),fs=require('fs');
+(async()=>{const b=await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox']});try{for(const width of [320,390,1280]){const p=await b.newPage({viewport:{width,height:844},hasTouch:true});await p.route('http://test/**',r=>{const f=new URL(r.request().url()).pathname.slice(1)||'index.html';return r.fulfill({body:fs.readFileSync(__dirname+'/../'+f),contentType:f.endsWith('.js')?'application/javascript':'text/html'});});await p.addInitScript(()=>requestAnimationFrame=()=>0);await p.goto('http://test/');console.log(await p.evaluate(()=>{
+const check=(v,m)=>{if(!v)throw Error(m);};const cfg={...COMBAT_CONFIG.slime,...STAGE_DEFINITIONS[1].enemies[0].modifiers};
+check(!coins.some(c=>c.loot==='key')&&!loot.pending.some(c=>c.type==='key'),'Key spawned');
+const k={left:49,right:411,floor:122,x:100,y:122};const e=new Slime(230,cfg,1,()=>.5);
+e.update(.1,k);k.x=400;k.y=60;const x=e.x;e.update(.1,k);check(e.x>x&&e.moveDirection===1,'Patrol tracks knight');
+e.x=396;e.moveDirection=1;e.update(.1,k);check(e.x===396&&e.moveDirection===-1&&e.movementState==='MOVING','Right reversal');e.x=64;e.update(.1,k);check(e.x===64&&e.moveDirection===1,'Left reversal');
+let call=0;const pauses=new Slime(230,cfg,1,()=>[0,0,.5,.9][call++]??.5);pauses.update(2,k);check(pauses.movementState==='PAUSED'&&pauses.pauseTimer>=.4&&pauses.pauseTimer<=1.2,'Pause scheduling');const spot=pauses.x,dir=pauses.moveDirection;pauses.update(.2,k);check(pauses.x===spot,'Paused slime moved');pauses.update(.61,k);check(pauses.movementState==='MOVING'&&pauses.moveDirection===dir,'Resume direction');
+const first=new Slime(200,cfg,1,()=>.1),second=new Slime(200,cfg,1,()=>.9);check(first.pauseTimer!==second.pauseTimer,'Synchronized timers');
+const failed=new Slime(200,cfg,1,()=>.9);failed.update(3.8,k);check(failed.movementState==='MOVING'&&failed.pauseTimer>=2&&failed.pauseTimer<=4,'Failed pause opportunity');
+const left=new Slime(64,cfg,1),right=new Slime(396,cfg,-1);left.update(STEP,k);right.update(STEP,k);check(left.x>64&&right.x<396,'Spawn direction');
+// Both side choices occur approximately equally without a nearby-player fallback.
+const original=Math.random;let sideCalls=0,l=0,r=0;try{for(let i=0;i<1000;i++){const manager=new WaveManager();Math.random=()=>sideCalls++%2===0?.5:(i+.5)/1000;manager.update(0,s=>s<0?l++:r++);}}finally{Math.random=original;}check(l===500&&r===500,'Spawn distribution');
+const old=combat.enemies[0];combat.waves.advance();combat.spawnEnemy(1);check(old.config.movement==='patrol'&&combat.enemies.at(-1).config.movement!=='patrol'&&combat.enemies.at(-1).config.color==='#8d43ec','Stage assignment');
+const chase=combat.enemies.at(-1);chase.x=230;dungeon.x=100;dungeon.y=dungeon.floor;chase.update(STEP,dungeon);check(chase.moveDirection===-1,'Stage 2 chase changed');
+combat.restart();const enemy=combat.enemies[0];enemy.x=dungeon.x+30;enemy.movementState='PAUSED';enemy.pauseTimer=1;combat.update(STEP);check(enemy.hp===1,'Paused enemy immune');
+combat.health.invulnerable=0;enemy.x=dungeon.x-5;enemy.hitTimer=0;enemy.recoil=0;combat.update(STEP);check(combat.health.hearts===2,'Paused contact damage');
+setPaused(true);const snapshot=JSON.stringify(combat.enemies),timer=combat.waves.timer;combat.update(100);frame(99999);check(JSON.stringify(combat.enemies)===snapshot&&combat.waves.timer===timer,'Game pause advanced patrol');setPaused(false);
+const before=coins.length,balance=score;enemy.hp=0;combat.defeatEnemy(enemy);combat.defeatEnemy(enemy);check(coins.length===before+1&&score===balance,'Reward duplication');
+combat.restart();check(combat.waves.definition.spawnInterval===3&&combat.enemies[0].movementState==='MOVING','Restart patrol');return {width:innerWidth,left:l,right:r,keys:0};}));await p.close();}}finally{await b.close();}})().catch(e=>{console.error(e);process.exitCode=1});

@@ -9,7 +9,7 @@ const path=require('node:path');
    const page=await browser.newPage({viewport,hasTouch:viewport.width<500});const errors=[];page.on('pageerror',e=>errors.push(e.message));
    await page.route('http://coin.test/**',route=>{const file=new URL(route.request().url()).pathname.slice(1)||'index.html';return route.fulfill({body:fs.readFileSync(path.join(__dirname,'..',file)),contentType:file.endsWith('.js')?'application/javascript':'text/html'});});
    await page.addInitScript(()=>{window.requestAnimationFrame=()=>0;});await page.goto('http://coin.test/');
-   await page.evaluate(()=>{combat.powerups.config={...POWERUP_CONFIG,dropChance:0};});
+   await page.evaluate(()=>{combat.powerups.config={...POWERUP_CONFIG,dropChance:0};STAGE_DEFINITIONS[1].randomSides=false;STAGE_DEFINITIONS[1].enemies[0].modifiers.patrolPause.chance=0;combat.restart();});
    const result=await page.evaluate(()=>{
     const check=(condition,message)=>{if(!condition)throw Error(message);};
     // Bottom corners stay square and grounded throughout the squash cycle.
@@ -39,7 +39,7 @@ const path=require('node:path');
     check(combat.enemies[0].x<dungeon.x,'Alternating spawn side');
     // Crossing overhead does not reverse pursuit until the knight lands.
     for(const direction of [-1,1]){
-     combat.restart();const enemy=combat.enemies[0];
+     combat.restart();const enemy=combat.enemies[0];enemy.config={...enemy.config,movement:'chase'};
      enemy.x=230;dungeon.x=230+direction*70;enemy.update(STEP,dungeon);
      check(enemy.moveDirection===direction,'Grounded pursuit direction');
      dungeon.y=dungeon.floor-60;dungeon.x=230-direction*70;
@@ -49,7 +49,7 @@ const path=require('node:path');
      check(enemy.moveDirection===-direction,'Pursuit did not resume on landing');
     }
     // A full moving jump clears a slime without it turning underneath us.
-    combat.restart();combat.enemies[0].x=310;dungeon.keys.add('KeyD');dungeon.jumpQueued=true;
+    combat.restart();combat.enemies[0].x=310;combat.enemies[0].moveDirection=-1;dungeon.keys.add('KeyD');dungeon.jumpQueued=true;
     tick(.85,true);dungeon.clearInput();
     check(dungeon.y===dungeon.floor&&combat.health.hearts===3,'Jump-over caused body damage');
     check(dungeon.x>combat.enemies[0].x,'Jump did not clear slime');

@@ -1,6 +1,6 @@
 'use strict';
 const STAGE_DEFINITIONS = {
-  1:{spawnInterval:3,maxEnemies:12,enemies:[{type:'slime',probability:1,appearance:{},modifiers:{}}]},
+  1:{spawnInterval:3,maxEnemies:12,randomSides:true,enemies:[{type:'slime',probability:1,appearance:{},modifiers:{movement:'patrol',patrolPause:{minDuration:.4,maxDuration:1.2,minInterval:2,maxInterval:4,chance:.15}}}]},
   2:{spawnInterval:3,maxEnemies:12,enemies:[{type:'slime',probability:1,appearance:{color:'#8d43ec'},modifiers:{}}]}
 };
 class WaveManager {
@@ -14,6 +14,6 @@ class WaveManager {
     const choices=this.definition.enemies,total=choices.reduce((s,e)=>s+e.probability,0);
     let roll=Math.random()*total,choice=choices[choices.length-1];
     for(const candidate of choices){roll-=candidate.probability;if(roll<0){choice=candidate;break;}}
-    spawn(this.side,choice);this.side*=-1;this.spawned++;this.timer=this.definition.spawnInterval;
+    spawn(this.definition.randomSides?(Math.random()<.5?-1:1):this.side,choice);this.side*=-1;this.spawned++;this.timer=this.definition.spawnInterval;
   }
 }

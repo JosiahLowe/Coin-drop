@@ -8,7 +8,7 @@ const LOOT_TYPES = {
   chest: { name:'Treasure Chest', width:34, height:28, mass:5, friction:1.4, shape:'circle', color:'#e6bc60' },
   key: { name:'Rusty Key', width:20, height:30, mass:1.1, friction:1, shape:'circle', color:'#daab79' }
 };
-const LOOT_SCHEDULE = {1:'potion',3:'sword',5:'armor',7:'chest',9:'key'};
+const LOOT_SCHEDULE = {1:'potion',3:'sword',5:'armor',7:'chest',};
 const CHEST_REWARDS = [{type:'potion'},{type:'sword'},{type:'armor'},{type:'coins',amount:5}];
 class PhysicalLoot {
   constructor(notify, awardCoins, random = Math.random) {
@@ -19,7 +19,7 @@ class PhysicalLoot {
   observeWave(wave) {
     if(!this.initialSeeded){
       this.initialSeeded=true;
-      Object.keys(LOOT_TYPES).forEach((type,index)=>this.pending.push({id:'loot-'+this.nextId++,type,lane:.05+index*.225}));
+      Object.keys(LOOT_TYPES).filter(type=>type!=='key').forEach((type,index)=>this.pending.push({id:'loot-'+this.nextId++,type,lane:.05+index*.3}));
       Object.keys(LOOT_SCHEDULE).forEach(stage=>this.seenWaves.add(Number(stage)));
     }
     this.seenWaves.add(wave);

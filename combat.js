@@ -21,10 +21,26 @@ class PlayerHealth {
 }
 
 class Slime {
-  constructor(x, config, moveDirection = 0) {
+  constructor(x, config, moveDirection = 0, random = Math.random) {
+    this.config=config;this.random=random;this.movementState='MOVING';
+    this.pauseTimer=config.movement==='patrol'?this.samplePause('Interval'):0;
     this.moveDirection = moveDirection;
     this.x = x; this.config = config; this.hp = config.health;
     this.hitTimer = 0; this.recoil = 0; this.direction = 0; this.age = 0;
+  }
+  samplePause(kind){const p=this.config.patrolPause;return p['min'+kind]+this.random()*(p['max'+kind]-p['min'+kind]);}
+  movingTime(dt){
+    let moving=0,left=dt;
+    while(left>1e-8){
+      const step=Math.min(left,this.pauseTimer);if(this.movementState==='MOVING')moving+=step;
+      left-=step;this.pauseTimer=Math.max(0,this.pauseTimer-step);
+      if(this.pauseTimer<=1e-8){
+        if(this.movementState==='PAUSED'){this.movementState='MOVING';this.pauseTimer=this.samplePause('Interval');}
+        else if(this.random()<this.config.patrolPause.chance){this.movementState='PAUSED';this.pauseTimer=this.samplePause('Duration');}
+        else this.pauseTimer=this.samplePause('Interval');
+      }
+    }
+    return moving;
   }
   box(floor) { return { x: this.x - this.config.radius, y: floor - this.config.height, w: this.config.radius * 2, h: this.config.height }; }
   update(dt, knight) {
@@ -34,9 +50,12 @@ class Slime {
     this.x += this.direction * this.config.recoilSpeed * recoilStep;
     // Commit to the last grounded pursuit direction throughout a jump.
     // Recoil remains independent and still works on airborne sword hits.
-    if (knight.y >= knight.floor) this.moveDirection = Math.sign(knight.x - this.x);
-    this.x += this.moveDirection * this.config.speed * (dt - recoilStep);
+    const patrol=this.config.movement==='patrol';
+    if (!patrol && knight.y >= knight.floor) this.moveDirection = Math.sign(knight.x - this.x);
+    const moving=patrol?Math.max(0,this.movingTime(dt)-recoilStep):dt-recoilStep;
+    this.x += this.moveDirection * this.config.speed * moving;
     this.x = Math.max(knight.left + this.config.radius, Math.min(knight.right - this.config.radius, this.x));
+    if(patrol){if(this.x<=knight.left+this.config.radius)this.moveDirection=1;else if(this.x>=knight.right-this.config.radius)this.moveDirection=-1;}
   }
   hit(damage, direction, cooldown) {
     if (this.hitTimer > 1e-8 || this.hp <= 0) return false;
@@ -129,7 +148,7 @@ class DungeonCombat {
     let x = side > 0 ? k.right - radius : k.left + radius;
     if (Math.abs(x - k.x) < 110) x = x > (k.left + k.right) / 2 ? k.left + radius : k.right - radius;
     const config={...this.config.slime,...spec.modifiers,...spec.appearance};
-    this.enemies.push(new Slime(x, config, Math.sign(k.x - x)));
+    this.enemies.push(new Slime(x, config, (config.movement==='patrol'?(x<(k.left+k.right)/2?1:-1):Math.sign(k.x-x))));
   }
   defeatEnemy(e) {
     if (this.knight.paused || e.defeated || e.hp > 0) return;

@@ -87,7 +87,8 @@ all old tokens with one fresh token, and preserves all other machine/loot state.
 
 ## Physical loot (Phase 5A)
 
-All five loot types start together on the lower deck, spread horizontally.
+Potion, sword, armor, and chest start together on the lower deck, spread horizontally.
+Rusty Key definitions are retained but key spawning is disabled.
 The earlier stage schedule is marked fulfilled so it does not add duplicates. For testing, they drop from a height of 15 onto the lower deck, one item
 radius plus six units behind the collection edge. They still need pushing to
 fall off and be collected. They use the same
@@ -245,3 +246,29 @@ walkway pickup exists. Multiple enemy deaths in one step cannot create two
 pickups. Expiry or collection removes the waiting pickup; active boosts must
 expire before further rolls become eligible. The 15% chance applies to eligible
 deaths; the guaranteed physical coin reward is unchanged.
+
+## Stage 1 wandering slimes
+
+Stage 1 now uses horizontal patrols at the unchanged 77.5-unit speed, with
+random left/right entries every three seconds (12-enemy cap unchanged).
+The existing safe-edge fallback still avoids spawning directly on the knight.
+Patrol direction always points inward at entry, and reverses at the walkway
+boundaries without automatically pausing. Player position or jumping never
+changes patrol direction. Stage 2 and its fallback stages retain their purple
+appearance and previous grounded pursuit/airborne direction behavior. Enemies
+keep their assigned behavior across token transitions.
+
+Each Stage 1 slime independently schedules an opportunity after 2–4 seconds.
+A 15% successful check pauses voluntary movement for 0.4–1.2 seconds, then
+resumes the same direction; failed checks schedule another opportunity. Idle
+animation and combat remain active during these movement pauses. Sword-hit
+recoil still applies. Game pause freezes all of these timers and movement.
+The Stage 1 definition in `waves.js` contains the configurable movement and
+pause settings; `Slime` keeps its own state/timer/random decisions.
+
+`node tests/patrol.cjs` checks non-tracking, inward spawns, side distribution,
+edge reversals, pause ranges/resumption/failures, independent timers, paused
+combat, Stage 2 preservation, game pause, restart, coin rewards, and disabled
+key spawning at phone and desktop sizes. Legacy combat fixtures use deterministic
+sides and disabled random pauses for repeatable baseline assertions. Existing
+movement, power-up, progression, stage, loot, and layout tests also pass.
