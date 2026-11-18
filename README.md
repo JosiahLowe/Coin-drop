@@ -297,3 +297,12 @@ zero balance, exact cooldown, pause/resume, full-machine rejection, restart,
 real multi-touch movement/drop, keyboard input, and no hold repeat at phone and
 desktop sizes. Existing physics tests cover the same coin bodies pushing loot
 and NEXT WAVE tokens. Real iPhone testing remains manual.
+
+## Current slime tiers
+
+Stage 1 keeps its lavender appearance and now has 1 HP (one normal sword hit).
+Stage 2 is green (#65c67b), has 2 HP, and copies Stage 1's patrol, random-side
+spawns, independent pause pattern, speed, and three-second interval. Stage 3+
+uses this Stage 2 fallback. Already-spawned slimes retain their assigned stats
+and appearance across transitions. Power Sword still deals two damage, so it
+can defeat Stage 2 slimes in one hit. Hit cooldowns and rewards are unchanged.

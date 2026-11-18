@@ -1,7 +1,7 @@
 'use strict';
 const STAGE_DEFINITIONS = {
-  1:{spawnInterval:3,maxEnemies:12,randomSides:true,enemies:[{type:'slime',probability:1,appearance:{},modifiers:{movement:'patrol',patrolPause:{minDuration:.4,maxDuration:1.2,minInterval:2,maxInterval:4,chance:.15}}}]},
-  2:{spawnInterval:3,maxEnemies:12,enemies:[{type:'slime',probability:1,appearance:{color:'#8d43ec'},modifiers:{}}]}
+  1:{spawnInterval:3,maxEnemies:12,randomSides:true,enemies:[{type:'slime',probability:1,appearance:{},modifiers:{health:1,movement:'patrol',patrolPause:{minDuration:.4,maxDuration:1.2,minInterval:2,maxInterval:4,chance:.15}}}]},
+  2:{spawnInterval:3,maxEnemies:12,randomSides:true,enemies:[{type:'slime',probability:1,appearance:{color:'#65c67b'},modifiers:{health:2,movement:'patrol',patrolPause:{minDuration:.4,maxDuration:1.2,minInterval:2,maxInterval:4,chance:.15}}}]}
 };
 class WaveManager {
   constructor(){this.reset();}

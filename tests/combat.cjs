@@ -24,7 +24,7 @@ const path=require('node:path');
      }
     }
     const tick=(seconds,move=false)=>{for(let t=0;t<seconds-1e-8;t+=STEP){if(move)dungeon.update(STEP);combat.update(STEP);}};
-    const fresh=()=>{combat.restart();combat.enemies[0].config={...combat.enemies[0].config,speed:0};};
+    const fresh=()=>{combat.restart();combat.enemies[0].hp=2;combat.enemies[0].config={...combat.enemies[0].config,speed:0};};
     check(combat.enemies[0]&&Math.abs(combat.enemies[0].x-dungeon.x)>110,'Initial spawn distance');
     // Face right: sword overlaps the slime before the body does.
     fresh();combat.enemies[0].x=dungeon.x+30;combat.update(STEP);
@@ -78,7 +78,7 @@ const path=require('node:path');
     document.querySelector('#restart').click();
     check(combat.health.hearts===3&&!dungeon.disabled&&dungeon.x===230,'Restart player');
     check(JSON.stringify(coins.filter(c=>!c.token))===machine&&time===machineTime&&score===currentScore,'Restart reset the machine or currency');
-    check(combat.enemies[0]&&combat.enemies[0].hp===2,'Restart spawn');
+    check(combat.enemies[0]&&combat.enemies[0].hp===1,'Restart spawn');
     dungeon.keys.add('KeyD');dungeon.update(STEP);check(dungeon.x>230,'Movement after restart');dungeon.clearInput();
     // A single wallet: paid drops, no spending at cap or while dead/empty.
     reset();check(score===0,'Starting balance must be zero');score=1;const start=score;const beforeDrop=coins.length;drop();
@@ -97,7 +97,7 @@ const path=require('node:path');
     return {outcomes,hearts:combat.health.hearts};
    });
    // Real touch input can position the sword and drop a paid coin mid-combat.
-   await page.evaluate(()=>{combat.restart();combat.enemies[0].x=dungeon.x-34;});
+   await page.evaluate(()=>{combat.restart();combat.enemies[0].hp=2;combat.enemies[0].x=dungeon.x-34;});
    const cdp=await page.context().newCDPSession(page),box=await page.locator('[data-knight=left]').boundingBox();
    await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:box.x+box.width/2,y:box.y+box.height/2,id:1}]});
    await page.waitForFunction(()=>dungeon.pointers.size===1);
