@@ -184,8 +184,8 @@ slime's death position. These pickups never join the machine body list or
 physical-loot collection list. Contact activates a pickup; uncollected pickups
 expire after 12 seconds of gameplay time.
 
-Long Sword (†, gold) doubles normal visible blade reach and its hitbox for
-15 seconds. Speed Boost (», green) increases horizontal speed by 50% for
+Power Sword (†, gold) doubles sword damage for 15 seconds, defeating current
+2-HP slimes in one hit while retaining normal blade size and collision reach. Speed Boost (», green) increases horizontal speed by 50% for
 15 seconds without changing jump or gravity. Shield Boost (◇, blue) blocks
 enemy contact damage for 10 seconds and outlines the knight. Only one boost
 is active: another type replaces it, while the same type refreshes its duration.
@@ -199,7 +199,7 @@ their clocks and disables all effects; restart removes pickups and boosts and
 restores base stats. No permanent equipment or inventory systems are added.
 
 Run `node tests/powerups.cjs` for deterministic probability, reward uniqueness,
-collection, extended sword hits, speed/shield effects, expiry, replacement,
+collection, one-hit sword kills, speed/shield effects, expiry, replacement,
 refresh, pause, stage persistence, and death/restart checks across phone and
 desktop viewport sizes. Existing combat regression tests disable random drops
 to keep their baseline comparisons deterministic. Real iPhone testing remains

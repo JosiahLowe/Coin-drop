@@ -94,7 +94,7 @@ class DungeonCombat {
     // when several enemies reach the knight in the same simulation step.
     for (const e of this.enemies) {
       e.update(dt, k);
-      if (overlaps(this.swordBox(), e.box(k.floor))) e.hit(this.config.sword.damage, k.facing, this.config.sword.hitCooldown);
+      if (overlaps(this.swordBox(), e.box(k.floor))) e.hit(this.config.sword.damage * (k.swordDamageMultiplier || 1), k.facing, this.config.sword.hitCooldown);
       if (e.hp === 0) this.defeatEnemy(e);
     }
     this.enemies = this.enemies.filter(e => !e.defeated);

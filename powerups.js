@@ -1,6 +1,6 @@
 'use strict';
 const POWERUP_CONFIG={dropChance:.15,groundLifetime:12,policy:'replace-refresh',types:{
-  sword:{name:'Long Sword',icon:'†',color:'#ffe28a',duration:15,reachMultiplier:2},
+  sword:{name:'Power Sword',icon:'†',color:'#ffe28a',duration:15,damageMultiplier:2},
   speed:{name:'Speed Boost',icon:'»',color:'#8af4b4',duration:15,speedMultiplier:1.5},
   shield:{name:'Shield Boost',icon:'◇',color:'#8adfff',duration:10}
 }};
@@ -13,6 +13,7 @@ class CombatPowerups {
   apply(enabled=true){
     const type=enabled&&this.active?this.config.types[this.active.type]:null;
     this.knight.swordReach=this.normalReach*(type?.reachMultiplier||1);
+    this.knight.swordDamageMultiplier=type?.damageMultiplier||1;
     this.knight.speedMultiplier=type?.speedMultiplier||1;
     this.knight.shielded=!!(enabled&&this.active?.type==='shield');
   }
