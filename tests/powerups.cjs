@@ -1,0 +1,21 @@
+const {chromium}=require('playwright'),fs=require('fs');
+(async()=>{const browser=await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox']});try{for(const width of [320,390,1280]){const p=await browser.newPage({viewport:{width,height:844},hasTouch:true});await p.route('http://test/**',r=>{const f=new URL(r.request().url()).pathname.slice(1)||'index.html';return r.fulfill({body:fs.readFileSync(__dirname+'/../'+f),contentType:f.endsWith('.js')?'application/javascript':'text/html'});});await p.addInitScript(()=>requestAnimationFrame=()=>0);await p.goto('http://test/');console.log(await p.evaluate(()=>{
+const check=(a,m)=>{if(!a)throw Error(m);};const boosts=combat.powerups;
+// Deterministic rolls cover the probability threshold and all selections.
+let successes=0;for(let i=0;i<1000;i++){let roll=0;boosts.random=()=>roll++===0?(i+.5)/1000:.1;boosts.rollDrop(100);}
+check(boosts.pickups.length===150,'15% probability');check(boosts.pickups.every(p=>p.y===dungeon.floor-10),'Not on walkway');
+boosts.reset();boosts.random=()=>0;const enemy=combat.enemies[0],n=coins.length;enemy.hp=0;combat.defeatEnemy(enemy);combat.defeatEnemy(enemy);check(coins.length===n+1&&boosts.pickups.length===1,'Duplicate coin/pickup reward');
+boosts.update(12.1,{x:0,y:0,w:0,h:0});check(!boosts.pickups.length,'Ground expiry');
+boosts.pickups=[{type:'sword',x:dungeon.x,y:dungeon.floor-10,remaining:12}];boosts.update(0,combat.bodyBox());check(!boosts.pickups.length&&boosts.active.type==='sword','Touch collection');
+check(dungeon.swordReach===26&&combat.swordBox().w===26,'Long sword reach');
+const distant=new Slime(dungeon.x+50,{...COMBAT_CONFIG.slime,speed:0});combat.enemies=[distant];combat.update(STEP);check(distant.hp===1,'Extended blade did not hit');
+dungeon.facing=-1;check(combat.swordBox().x===dungeon.x-45,'Left long sword');
+boosts.update(5,{x:0,y:0,w:0,h:0});boosts.activate('sword');check(boosts.active.remaining===15,'Refresh');
+boosts.activate('speed');check(dungeon.swordReach===13&&dungeon.speedMultiplier===1.5,'Replacement');const x=dungeon.x;dungeon.keys.add('KeyD');dungeon.update(.1);dungeon.clearInput();check(Math.abs(dungeon.x-x-23.25)<1e-8,'Speed multiplier');
+boosts.update(15,{x:0,y:0,w:0,h:0});check(!boosts.active&&dungeon.speedMultiplier===1,'Speed expiry');
+boosts.activate('shield');combat.enemies=[new Slime(dungeon.x-5,{...COMBAT_CONFIG.slime,speed:0})];const hp=combat.health.hearts;combat.update(STEP);check(combat.health.hearts===hp,'Shield damage');boosts.update(10,{x:0,y:0,w:0,h:0});combat.enemies[0].x=dungeon.x-5;combat.update(STEP);check(combat.health.hearts===hp-1,'Shield expiry damage');
+boosts.activate('sword');boosts.update(15,{x:0,y:0,w:0,h:0});check(dungeon.swordReach===13,'Sword expiry');
+boosts.activate('speed');boosts.pickups=[{type:'shield',x:100,y:112,remaining:12}];setPaused(true);const snap=JSON.stringify({active:boosts.active,pickups:boosts.pickups,age:boosts.age});for(let i=0;i<10;i++)frame(i*10000);boosts.update(100,combat.bodyBox());check(snap===JSON.stringify({active:boosts.active,pickups:boosts.pickups,age:boosts.age}),'Paused boost timers');setPaused(false);
+combat.waves.advance();check(boosts.active.type==='speed','Stage cleared boost');
+combat.health.invulnerable=0;combat.health.hearts=1;combat.enemies[0].x=dungeon.x-5;combat.update(STEP);check(combat.health.dead&&dungeon.speedMultiplier===1&&dungeon.swordReach===13&&!dungeon.shielded,'Death effects');const remaining=boosts.active.remaining;combat.update(3);check(boosts.active.remaining===remaining,'Dead timer');
+combat.restart();check(!boosts.active&&!boosts.pickups.length&&dungeon.speedMultiplier===1&&dungeon.swordReach===13,'Restart cleanup');draw();dungeon.draw();return {width:innerWidth,dropRate:'15%',passed:true};}));await p.screenshot({path:`/tmp/boosts-${width}.png`});await p.close();}}finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1});

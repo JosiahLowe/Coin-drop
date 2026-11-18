@@ -115,7 +115,7 @@ class DungeonWalkway {
     if (direction) this.facing = direction;
     const previousX = this.x;
     // Leave room for the extended sword as well as the knight's body.
-    this.x = Math.max(this.left + 32, Math.min(this.right - 32, this.x + direction * 155 * dt));
+    this.x = Math.max(this.left + 32, Math.min(this.right - 32, this.x + direction * 155 * (this.speedMultiplier || 1) * dt));
     this.moving = this.x !== previousX;
     if (this.jumpQueued && this.y === this.floor) this.vy = -310;
     this.jumpQueued = false;

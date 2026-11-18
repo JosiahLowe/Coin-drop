@@ -62,25 +62,28 @@ class DungeonCombat {
   constructor(knight, reward, onChange = () => {}, config = COMBAT_CONFIG) {
     this.knight = knight; this.reward = reward; this.onChange = onChange; this.config = config;
     this.health = new PlayerHealth(config.player); this.waves = new WaveManager();
-    knight.swordReach = config.sword.reach;
+    this.powerups=new CombatPowerups(knight,config.sword.reach);
     knight.drawEnemies = ctx => this.drawEnemies(ctx);
     this.restart();
   }
   restart() {
     const k = this.knight;
+    this.powerups.reset();
     this.health.reset(); this.enemies = []; this.effects = []; this.waves.reset();
     k.x = (k.left + k.right) / 2; k.y = k.floor; k.vy = 0; k.facing = 1;
     k.walk = 0; k.moving = false; k.disabled = false; k.damageAlpha = 1; k.clearInput();
     this.waves.update(0, (side,spec) => this.spawnEnemy(side,spec)); this.onChange(this);
   }
   swordBox() {
-    const k = this.knight, reach = this.config.sword.reach;
+    const k = this.knight, reach = k.swordReach;
     return { x: k.facing > 0 ? k.x + 19 : k.x - 19 - reach, y: k.y - k.poseBob() - 27, w: reach, h: 3 };
   }
   bodyBox() { const k = this.knight; return { x: k.x - 10, y: k.y - 48 - k.poseBob(), w: 20, h: 48 }; }
   update(dt) {
     if (this.health.dead || this.knight.paused) return;
     const k = this.knight, h = this.health;
+    this.powerups.normalReach=this.config.sword.reach;
+    this.powerups.update(dt,this.bodyBox());
     h.update(dt);
     const shove = Math.min(dt, h.knockback); h.knockback = Math.max(0, h.knockback - dt);
     k.x = Math.max(k.left + 32, Math.min(k.right - 32, k.x + h.direction * this.config.player.knockbackSpeed * shove));
@@ -96,9 +99,9 @@ class DungeonCombat {
     }
     this.enemies = this.enemies.filter(e => !e.defeated);
     for (const e of this.enemies) {
-      if (e.hitTimer <= 1e-8 && overlaps(this.bodyBox(), e.box(k.floor))) {
+      if (!k.shielded && e.hitTimer <= 1e-8 && overlaps(this.bodyBox(), e.box(k.floor))) {
         if (h.damage(e.config.damage, k.x >= e.x ? 1 : -1) && h.dead) {
-          k.disabled = true; k.clearInput(); k.vy = 0;
+          k.disabled = true; k.clearInput(); k.vy = 0;this.powerups.apply(false);
         }
       }
     }
@@ -117,9 +120,10 @@ class DungeonCombat {
     if (this.knight.paused || e.defeated || e.hp > 0) return;
     e.defeated = true;
     for (let i = 0; i < 7; i++) this.effects.push({ x: e.x, y: this.knight.floor - 16, vx: Math.cos(i * 2.4) * 38, vy: -30 - i * 5, life: .4 });
-    this.reward(e.x);
+    this.reward(e.x);this.powerups.rollDrop(e.x);
   }
   drawEnemies(ctx) {
+    this.powerups.draw(ctx);
     for (const e of this.enemies) e.draw(ctx, this.knight.floor);
     for (const p of this.effects) { ctx.globalAlpha = p.life / .4; ctx.fillStyle = '#d8a3ee'; ctx.fillRect(p.x, p.y, 3, 3); }
     ctx.globalAlpha = 1;

@@ -175,3 +175,32 @@ Movement buttons are 58px tall and use nearly the full available width.
 The knight jumps about 18% higher; slime spawns are three seconds apart.
 The wave HUD reserves a fixed height so quiet-period text cannot shift controls.
 Run `node tests/tuning.cjs` to verify initial potion settling and HUD stability.
+
+## Temporary combat boosts (Phase 6)
+
+Every slime still guarantees one physical machine coin. Independently, a
+configurable 15% roll creates one stationary glowing walkway pickup at the
+slime's death position. These pickups never join the machine body list or
+physical-loot collection list. Contact activates a pickup; uncollected pickups
+expire after 12 seconds of gameplay time.
+
+Long Sword (†, gold) doubles normal visible blade reach and its hitbox for
+15 seconds. Speed Boost (», green) increases horizontal speed by 50% for
+15 seconds without changing jump or gravity. Shield Boost (◇, blue) blocks
+enemy contact damage for 10 seconds and outlines the knight. Only one boost
+is active: another type replaces it, while the same type refreshes its duration.
+The compact stage HUD shows its icon and remaining seconds.
+
+`powerups.js` owns chance, type definitions, durations, the replace/refresh
+policy, collection, and walkway rendering. Combat owns death guards and calls
+it after the guaranteed coin reward. Pause freezes pickup glow, lifetimes,
+collection, and active timers. Stage transitions preserve boosts. Death stops
+their clocks and disables all effects; restart removes pickups and boosts and
+restores base stats. No permanent equipment or inventory systems are added.
+
+Run `node tests/powerups.cjs` for deterministic probability, reward uniqueness,
+collection, extended sword hits, speed/shield effects, expiry, replacement,
+refresh, pause, stage persistence, and death/restart checks across phone and
+desktop viewport sizes. Existing combat regression tests disable random drops
+to keep their baseline comparisons deterministic. Real iPhone testing remains
+manual.

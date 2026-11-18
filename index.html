@@ -43,9 +43,10 @@ header{margin-bottom:4px}h1{font-size:26px;margin:2px 0}.stats{padding-bottom:6p
 <footer><span>NO TOKENS REQUIRED</span><span>JUST ONE MORE DROP ↗</span></footer>
 </main>
 <script src="loot.js?v=loot-1"></script>
-<script src="knight.js?v=stages-1"></script>
+<script src="knight.js?v=boosts-1"></script>
 <script src="waves.js?v=stages-1"></script>
-<script src="combat.js?v=stages-1"></script>
+<script src="powerups.js?v=boosts-1"></script>
+<script src="combat.js?v=boosts-1"></script>
 <script>
 'use strict';
 const canvas = document.getElementById('game');
@@ -86,7 +87,7 @@ const combat = new DungeonCombat(dungeon, x => {
   document.getElementById('drop').disabled = true;
   if(machineReady)loot.observeWave(state.waves.wave);
   const waves = state.waves;
-  const message = 'STAGE ' + waves.wave;
+  const message = 'STAGE ' + waves.wave + (state.powerups.label?' · '+state.powerups.label:'');
   const status = document.getElementById('wave-status');
   if (status.textContent !== message) status.textContent = message;
   for (const button of dungeon.buttons) button.disabled = health.dead;
