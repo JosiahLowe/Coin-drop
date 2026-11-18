@@ -13,7 +13,7 @@ const failed=new Slime(200,cfg,1,()=>.9);failed.update(3.8,k);check(failed.movem
 const left=new Slime(64,cfg,1),right=new Slime(396,cfg,-1);left.update(STEP,k);right.update(STEP,k);check(left.x>64&&right.x<396,'Spawn direction');
 // Both side choices occur approximately equally without a nearby-player fallback.
 const original=Math.random;let sideCalls=0,l=0,r=0;try{for(let i=0;i<1000;i++){const manager=new WaveManager();Math.random=()=>sideCalls++%2===0?.5:(i+.5)/1000;manager.update(0,s=>s<0?l++:r++);}}finally{Math.random=original;}check(l===500&&r===500,'Spawn distribution');
-const old=combat.enemies[0];combat.waves.advance();combat.spawnEnemy(1);check(old.config.movement==='patrol'&&combat.enemies.at(-1).config.movement==='patrol'&&combat.enemies.at(-1).config.color==='#65c67b','Stage assignment');
+const old=combat.enemies[0];combat.waves.advance();combat.spawnEnemy(1);check(old.config.movement==='patrol'&&combat.enemies.at(-1).config.movement==='patrol'&&combat.enemies.at(-1).config.color==='#8d43ec','Stage assignment');
 const patrol=combat.enemies.at(-1);patrol.x=230;patrol.moveDirection=1;dungeon.x=100;dungeon.y=dungeon.floor;patrol.update(STEP,dungeon);check(patrol.moveDirection===1,'Stage 2 tracks player');
 combat.restart();const enemy=combat.enemies[0];enemy.hp=2;enemy.x=dungeon.x+30;enemy.movementState='PAUSED';enemy.pauseTimer=1;combat.update(STEP);check(enemy.hp===1,'Paused enemy immune');
 combat.health.invulnerable=0;enemy.x=dungeon.x-5;enemy.hitTimer=0;enemy.recoil=0;combat.update(STEP);check(combat.health.hearts===2,'Paused contact damage');

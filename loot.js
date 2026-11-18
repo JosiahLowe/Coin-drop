@@ -9,6 +9,7 @@ const LOOT_TYPES = {
   key: { name:'Rusty Key', width:20, height:30, mass:1.1, friction:1, shape:'circle', color:'#daab79' }
 };
 const LOOT_SCHEDULE = {1:'potion',3:'sword',5:'armor',7:'chest',};
+const ENEMY_LOOT_CHANCES=[{type:'potion',chance:.04},{type:'armor',chance:.03},{type:'sword',chance:.02},{type:'chest',chance:.01}];
 const CHEST_REWARDS = [{type:'potion'},{type:'sword'},{type:'armor'},{type:'coins',amount:5}];
 class PhysicalLoot {
   constructor(notify, awardCoins, random = Math.random) {
@@ -19,10 +20,21 @@ class PhysicalLoot {
   observeWave(wave) {
     if(!this.initialSeeded){
       this.initialSeeded=true;
-      Object.keys(LOOT_TYPES).filter(type=>type!=='key').forEach((type,index)=>this.pending.push({id:'loot-'+this.nextId++,type,lane:.05+index*.3}));
+      this.seedStarting();
       Object.keys(LOOT_SCHEDULE).forEach(stage=>this.seenWaves.add(Number(stage)));
     }
     this.seenWaves.add(wave);
+  }
+  seedStarting(){
+    this.pending=this.pending.filter(spec=>!spec.starting);
+    const types=['potion','sword','armor','chest'];
+    for(let i=types.length-1;i>0;i--){const j=Math.floor(this.random()*(i+1));[types[i],types[j]]=[types[j],types[i]];}
+    types.forEach(type=>this.pending.push({id:'loot-'+this.nextId++,type,starting:true}));
+  }
+  rollEnemy(x){
+    let roll=this.random();
+    for(const entry of ENEMY_LOOT_CHANCES){if(roll<entry.chance){this.pending.push({id:'loot-'+this.nextId++,type:entry.type,entryX:x});return entry.type;}roll-=entry.chance;}
+    return null;
   }
   collect(body) {
     if(this.isPaused?.() || (this.canCollect&&!this.canCollect(body)) || !body.falling || !body.loot || this.collectedIds.has(body.id))return;

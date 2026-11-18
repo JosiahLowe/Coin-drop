@@ -24,6 +24,8 @@ class Slime {
   constructor(x, config, moveDirection = 0, random = Math.random) {
     this.config=config;this.random=random;this.movementState='MOVING';
     this.pauseTimer=config.movement==='patrol'?this.samplePause('Interval'):0;
+    this.height=0;this.verticalSpeed=0;this.hopState='PATROLLING';
+    this.hopTimer=config.hop?config.hop.minInterval+this.random()*(config.hop.maxInterval-config.hop.minInterval):0;
     this.moveDirection = moveDirection;
     this.x = x; this.config = config; this.hp = config.health;
     this.hitTimer = 0; this.recoil = 0; this.direction = 0; this.age = 0;
@@ -42,8 +44,9 @@ class Slime {
     }
     return moving;
   }
-  box(floor) { return { x: this.x - this.config.radius, y: floor - this.config.height, w: this.config.radius * 2, h: this.config.height }; }
+  box(floor) { const preparing=this.hopState==='PREPARING_TO_JUMP',r=this.config.radius*(preparing?1.12:1),h=this.config.height*(preparing?.78:1);return {x:this.x-r,y:floor-this.height-h,w:r*2,h}; }
   update(dt, knight) {
+    this.updateHop(dt);
     this.age += dt; this.hitTimer = Math.max(0, this.hitTimer - dt);
     const recoilStep = Math.min(dt, this.recoil);
     this.recoil = Math.max(0, this.recoil - dt);
@@ -52,10 +55,25 @@ class Slime {
     // Recoil remains independent and still works on airborne sword hits.
     const patrol=this.config.movement==='patrol';
     if (!patrol && knight.y >= knight.floor) this.moveDirection = Math.sign(knight.x - this.x);
-    const moving=patrol?Math.max(0,this.movingTime(dt)-recoilStep):dt-recoilStep;
+    const hopMoving=this.config.hop&&this.hopState==='JUMPING';
+    const preparing=this.config.hop&&this.hopState==='PREPARING_TO_JUMP';
+    const moving=preparing?0:hopMoving?dt-recoilStep:patrol?Math.max(0,this.movingTime(dt)-recoilStep):dt-recoilStep;
     this.x += this.moveDirection * this.config.speed * moving;
     this.x = Math.max(knight.left + this.config.radius, Math.min(knight.right - this.config.radius, this.x));
     if(patrol){if(this.x<=knight.left+this.config.radius)this.moveDirection=1;else if(this.x>=knight.right-this.config.radius)this.moveDirection=-1;}
+  }
+  updateHop(dt){
+    const cfg=this.config.hop;if(!cfg)return;
+    if(this.hopState==='JUMPING'){
+      this.height+=this.verticalSpeed*dt-.5*cfg.gravity*dt*dt;this.verticalSpeed-=cfg.gravity*dt;
+      if(this.height<=0){this.height=0;this.verticalSpeed=0;this.hopState='PATROLLING';this.hopTimer=cfg.minInterval+this.random()*(cfg.maxInterval-cfg.minInterval);}
+      return;
+    }
+    if(this.hopState==='PREPARING_TO_JUMP'){
+      this.hopTimer-=dt;if(this.hopTimer<=1e-8){this.hopState='JUMPING';this.verticalSpeed=cfg.velocity;}return;
+    }
+    this.hopTimer=Math.max(0,this.hopTimer-dt);
+    if(this.hopTimer<=1e-8&&this.movementState==='MOVING'){this.hopState='PREPARING_TO_JUMP';this.hopTimer=cfg.prepare;}
   }
   hit(damage, direction, cooldown) {
     if (this.hitTimer > 1e-8 || this.hp <= 0) return false;
@@ -64,6 +82,8 @@ class Slime {
     return true;
   }
   draw(ctx, floor) {
+    ctx.save();ctx.translate(0,-this.height);
+    if(this.hopState==='PREPARING_TO_JUMP'){ctx.translate(this.x,floor);ctx.scale(1.12,.78);ctx.translate(-this.x,-floor);}
     const squash = Math.sin(this.age * 10) * 1.5;
     ctx.fillStyle = this.hitTimer > 0 && Math.floor(this.hitTimer * 30) % 2 ? '#fff0cf' : (this.config.color || '#b17ed1');
     const radius = this.config.radius + squash;
@@ -74,6 +94,7 @@ class Slime {
     ctx.ellipse(this.x, floor - 14, radius, this.config.height - 14 - squash, 0, Math.PI, Math.PI * 2);
     ctx.closePath(); ctx.fill();
     ctx.fillStyle = '#302638'; ctx.fillRect(this.x - 7, floor - 22, 3, 4); ctx.fillRect(this.x + 4, floor - 22, 3, 4);
+    ctx.restore();
   }
 }
 
@@ -153,7 +174,7 @@ class DungeonCombat {
   defeatEnemy(e) {
     if (this.knight.paused || e.defeated || e.hp > 0) return;
     e.defeated = true;
-    for (let i = 0; i < 7; i++) this.effects.push({ x: e.x, y: this.knight.floor - 16, vx: Math.cos(i * 2.4) * 38, vy: -30 - i * 5, life: .4 });
+    for (let i = 0; i < 7; i++) this.effects.push({ x: e.x, y: this.knight.floor - e.height - 16, vx: Math.cos(i * 2.4) * 38, vy: -30 - i * 5, life: .4 });
     this.reward(e.x);this.powerups.rollDrop(e.x);
   }
   drawEnemies(ctx) {

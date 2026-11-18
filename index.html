@@ -43,12 +43,12 @@ header{margin-bottom:4px}h1{font-size:26px;margin:2px 0}.stats{padding-bottom:6p
 <p class="hint">Knight: ← → / A D · Jump: Space / ↑ / W<br>Slime defeats feed the machine at their position. Push NEXT WAVE to advance.</p>
 <footer><span>NO TOKENS REQUIRED</span><span>JUST ONE MORE DROP ↗</span></footer>
 </main>
-<script src="loot.js?v=no-keys-1"></script>
+<script src="loot.js?v=hops-loot-1"></script>
 <script src="knight.js?v=boosts-1"></script>
-<script src="waves.js?v=slime-tiers-1"></script>
+<script src="waves.js?v=hops-loot-1"></script>
 <script src="progression.js?v=run-loot-1"></script>
 <script src="powerups.js?v=single-boost-1"></script>
-<script src="combat.js?v=patrol-1"></script>
+<script src="combat.js?v=hops-loot-1"></script>
 <script>
 'use strict';
 const canvas = document.getElementById('game');
@@ -69,6 +69,7 @@ let manualDropRemaining=0;
 let coins = [], score = STARTING_COINS, used = 0, time = 0;
 let pendingCoinDrops = [];
 let machineReady=false;
+let startingPlans=[],startingFallbacks=[];
 const loot=new PhysicalLoot(message=>{
   const notice=document.getElementById('loot-notice');notice.textContent=message;notice.hidden=!message;
 },amount=>{score+=amount;scoreElement.textContent=score;refreshDropButton();});
@@ -77,7 +78,7 @@ let pusherY = 207, accumulator = 0, lastTime = null, particles = [];
 let bumpUsed = false, bumpFlash = 0;
 const pusherAt = t => 232 - 25 * Math.cos(t * 1.55);
 const combat = new DungeonCombat(dungeon, x => {
-  pendingCoinDrops.push(x); flushCoinDrops();
+  pendingCoinDrops.push(x); flushCoinDrops();loot.rollEnemy(x);flushLootDrops();
 }, state => {
   const health = state.health;
   const hearts = document.getElementById('hearts');
@@ -111,6 +112,7 @@ function coin(x, y, z = 0) {
 function reset() {
   manualDropRemaining=0;
   time = 0; pusherY = pusherAt(0); coins = []; particles = []; pendingCoinDrops = []; loot.pending = [];
+  startingPlans=planStartingItems();
   updateAim();
   bumpUsed = false; bumpFlash = 0;
   // Leave one quarter of the grid empty to relieve initial pile pressure.
@@ -122,7 +124,7 @@ function reset() {
       let column=0;
       for (let x = LEFT + R + offset; x <= RIGHT - R; x += spacing) {
         const leaveLootPocket=z===0 && (Math.hypot(x-230,y-(EDGE-24))<40 || Math.hypot(x-110,y-340)<36);
-        if((row+column++)%4!==0 && !leaveLootPocket)coins.push(coin(x, y, z));
+        if((row+column++)%4!==0 && !leaveLootPocket && !startingPlans.some(p=>Math.hypot(p.x-x,p.y-y)<p.radius+R+1))coins.push(coin(x, y, z));
       }
     }
   }
@@ -168,14 +170,43 @@ function drop() {
   score--; scoreElement.textContent = score;refreshDropButton();
   manualDropRemaining=MANUAL_DROP_CONFIG.cooldown;refreshDropButton();return true;
 }
-function flushLootDrops(){
-  if(gamePaused)return;
-  while(loot.pending.length&&coins.length<180){
-    const spec=loot.pending.shift(),d=LOOT_TYPES[spec.type];
-    const radius=Math.hypot(d.width,d.height)/2;
-    const body=coin(LEFT+radius+(RIGHT-LEFT-2*radius)*spec.lane,EDGE-radius-6,15);
-    Object.assign(body,{loot:spec.type,id:spec.id,radius,mass:d.mass,resistance:d.friction});coins.push(body);
+function planStartingItems(){
+ const plans=[];
+ for(const type of ['potion','sword','armor','chest']){
+  const d=LOOT_TYPES[type],radius=Math.hypot(d.width,d.height)/2;
+  for(let i=0;i<500;i++){
+   const x=LEFT+radius+2+Math.random()*(RIGHT-LEFT-2*radius-4),y=290+radius+Math.random()*(EDGE-2*radius-302);
+   if(Math.hypot(x-110,y-340)<radius+22||plans.some(p=>Math.hypot(x-p.x,y-p.y)<radius+p.radius+3))continue;
+   plans.push({type,x,y,radius});break;
   }
+ }
+ return plans;
+}
+function flushLootDrops(){
+ if(gamePaused)return;
+ for(let index=0;index<loot.pending.length&&coins.length<180;){
+  const spec=loot.pending[index],d=LOOT_TYPES[spec.type],radius=Math.hypot(d.width,d.height)/2;
+  let x,y,z;
+  if(spec.entryX!==undefined){
+   x=Math.max(LEFT+radius,Math.min(RIGHT-radius,spec.entryX));y=BACK+radius+6;z=SHELF_HEIGHT+85;
+   if(coins.some(c=>Math.abs(c.z-z)<THICKNESS&&Math.hypot(c.x-x,c.y-y)<radius+radiusOf(c))) {index++;continue;}
+  }else if(spec.starting){
+   if(spec.retryAt!==undefined&&time<spec.retryAt){index++;continue;}
+   const planned=startingPlans.find(p=>p.type===spec.type);
+   const candidates=planned?[planned]:[];
+   for(let i=0;i<250;i++)candidates.push({x:LEFT+radius+1+Math.random()*(RIGHT-LEFT-2*radius-2),y:pusherAt(0)+50+radius+3+Math.random()*(EDGE-pusherAt(0)-50-2*radius-12)});
+   candidates.push(...startingFallbacks);
+   const spot=candidates.find(p=>p.x>=LEFT+radius&&p.x<=RIGHT-radius&&p.y>pusherY+radius&&p.y<EDGE-radius-5&&Math.hypot(p.x-110,p.y-340)>radius+22&&!coins.some(c=>Math.abs(c.z)<THICKNESS&&Math.hypot(c.x-p.x,c.y-p.y)<radius+radiusOf(c)+.2));
+   if(!spot){spec.retryAt=time+.5;index++;continue;}
+   x=spot.x;y=spot.y;z=0;
+  }else{x=LEFT+radius+(RIGHT-LEFT-2*radius)*(spec.lane??.5);y=EDGE-radius-6;z=15;}
+  const body=coin(x,y,z);Object.assign(body,{loot:spec.type,id:spec.id,radius,mass:d.mass,resistance:d.friction,starting:!!spec.starting});coins.push(body);
+  loot.pending.splice(index,1);
+ }
+}
+function restartStartingLoot(){
+ startingFallbacks=coins.filter(c=>c.starting).map(c=>({x:c.x,y:c.y}));
+ coins=coins.filter(c=>!c.starting);startingPlans=[];loot.seedStarting();flushLootDrops();
 }
 function surfaceAt(c) {
   if (c.y > EDGE) return -Infinity;
@@ -504,7 +535,7 @@ function frame(now) {
   while (accumulator >= STEP) { updateManualDrop(STEP); simulate(STEP); flushCoinDrops(); flushLootDrops(); ensureToken(); loot.update(STEP); dungeon.update(STEP); combat.update(STEP); accumulator -= STEP; }
   updateAim(); draw(); dungeon.draw(); requestAnimationFrame(frame);
 }
-document.getElementById('restart').addEventListener('click', () => { setPaused(false);combat.restart();manualDropRemaining=0;refreshDropButton();resetToken(); updateAim(); document.getElementById('restart').blur(); });
+document.getElementById('restart').addEventListener('click', () => { setPaused(false);combat.restart();restartStartingLoot();manualDropRemaining=0;refreshDropButton();resetToken(); updateAim(); document.getElementById('restart').blur(); });
 const dropButton=document.getElementById('drop');
 dropButton.addEventListener('pointerdown',e=>{if(e.button!==0)return;e.preventDefault();drop();});
 dropButton.addEventListener('click',e=>{if(e.detail===0&&!e.pointerType)drop();});

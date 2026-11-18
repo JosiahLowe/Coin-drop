@@ -7,7 +7,7 @@ const result=await page.evaluate(()=>{
 const check=(ok,msg)=>{if(!ok)throw Error(msg);};
 check(Object.keys(LOOT_TYPES).filter(type=>type!=='key').every(type=>coins.filter(c=>c.loot===type).length===1),'All starting loot');
 check(coins.filter(c=>c.loot).every(c=>c.y>pusherY+c.radius&&c.y<EDGE),'All loot lower deck');
-const initial=coins.find(c=>c.loot);check(initial.y===EDGE-initial.radius-6&&initial.z===15&&initial.y>pusherY+initial.radius,'Lower-deck test feed');
+const initial=coins.find(c=>c.loot);check(initial.y<EDGE-initial.radius&&initial.z===0&&initial.y>pusherY+initial.radius,'Lower-deck test feed');
 for(const wave of [1,3,5,7,9]){loot.observeWave(wave);loot.observeWave(wave);flushLootDrops();}
 check(coins.filter(c=>c.loot).length===4,'Schedule duplicate or missing loot');
 const ids=coins.filter(c=>c.loot).map(c=>c.id);combat.restart();combat.update(0);flushLootDrops();check(coins.filter(c=>c.loot).length===4,'Restart duplicates');

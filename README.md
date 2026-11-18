@@ -306,3 +306,41 @@ spawns, independent pause pattern, speed, and three-second interval. Stage 3+
 uses this Stage 2 fallback. Already-spawned slimes retain their assigned stats
 and appearance across transitions. Power Sword still deals two damage, so it
 can defeat Stage 2 slimes in one hit. Hit cooldowns and rewards are unchanged.
+
+## Enemy loot, blue hoppers, and randomized starts
+
+Each defeated slime still guarantees one rear-entry coin. A separate mutually
+exclusive roll uses `ENEMY_LOOT_CHANCES`: potion 4%, armor 3%, sword 2%, chest 1%,
+and nothing 90%. The existing enemy death guard covers both rewards. Walkway
+boost rolls remain independent. Enemy loot records the death x, clamps for its
+own radius, and enters from above the upper rear slot using the existing loot
+body definitions. If a coin/body occupies the entry, it waits for clearance;
+the shared 180-body limit is preserved and no old loot is deleted.
+
+Current stage colors follow the latest specification: Stage 1 green (1 HP),
+Stage 2 purple (2 HP), and Stage 3 blue (2 HP). Stages 1 and 2 retain their
+patrol/pause behavior and three-second interval. Stage 3 selects regular and
+hopping blue slimes equally. Later counters safely reuse Stage 3, with no new
+stages designed. Old enemies retain their own configuration across transitions.
+
+Hoppers have independent 3–6-second gameplay timers. A 0.2-second compression
+precedes a roughly 49-unit hop. During preparation they stop voluntary movement;
+in the air they keep patrolling horizontally, freeze random-pause opportunities,
+and remain vulnerable through height-aware body/sword hitboxes. They land before
+scheduling another hop. Pause freezes wind-up, vertical motion, and hop timers.
+
+Starting potion, sword, armor, and chest are randomly positioned and supported
+on the lower deck with spacing from each other, coins, walls, edge, and the
+reserved progression-token area. Initial coin filling leaves their footprints
+clear. On combat restart, only old starting items are replaced; ordinary coins,
+enemy loot, stored balance, and normal machine motion remain intact. Four fresh
+starting items receive new IDs and random safe placements. If a crowded machine
+cannot fit them immediately, pending items retry every half gameplay second,
+including former positions as safe fallback candidates. No overlaps are forced.
+Keys remain disabled. Manual drop cost and cooldown are unchanged.
+
+Run `node tests/hops-loot.cjs` for deterministic loot probabilities and variant
+selection, guaranteed/duplicate rewards, upper entry, randomized supported
+placements, restart quantities, hop wind-up/height/landing, airborne damage,
+and pause across phone and desktop viewports. Existing regression suites remain
+available; real iPhone/Safari testing is manual.
