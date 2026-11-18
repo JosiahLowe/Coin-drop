@@ -351,3 +351,40 @@ ground footprint, and get the first free physics slot ahead of queued rewards.
 The 180-body cap still applies; full boards wait only until a slot opens.
 Initial/reset tokens prefer the existing clear ground placement, with falling
 entry as a safe fallback. Collection and duplicate-transition guards are unchanged.
+
+## Lower-deck debris and clutter
+
+`debris.js` extends the existing solver rather than running a separate physics
+loop. Lower-deck starting coins and debris use random positions and rotations
+with non-overlap checks and clearance for starting loot, the token pocket,
+walls, and the collection lip. The upper shelf keeps its existing coin setup.
+`CLUTTER_CONFIG` targets 30 lower coins and 9 debris, with one of each debris
+type first and weighted remaining choices (bone 4, rock 2, wood 3). Placement
+skips excess bodies if safe space runs out instead of forcing an overcrowded
+layout; coins remain the most common objects. Four existing collectibles keep
+their existing randomized safe placement and deferred-entry behavior.
+
+Bones use a long narrow chamfered convex outline, 0.7 mass and 0.85 friction
+factor; wood uses a long rectangular outline, mass 2 and factor 1.05; rocks use
+an angular convex outline, mass 4.5 and factor 1.3. `DEBRIS_TYPES` holds geometry,
+colors, mass, and resistance. Coins and existing loot retain their original
+disc contacts, mass, appearance, entry, and rewards. Debris uses convex polygon
+contacts against discs and polygons, with angular contact velocity, rotational
+inertia, off-center impulse torque, and damped spin. Rotated extents constrain
+walls and the pusher face; support checks use actual footprints. Convex pieces
+can lodge between objects or span planar gaps; full deformable/3D bridging and
+concave bone geometry are not simulated. Debris simply disappears at the normal
+collection boundary without coin payouts or collection rewards.
+
+All bodies still share gravity, the existing seven-pass contact solver, 120 Hz
+updates, and 180-body cap. Polygon work is restricted to nearby pairs involving
+debris; ordinary disc contacts use the original fast path. Combat restart
+preserves existing clutter and coins, while machine reset/new page randomizes
+the lower deck. No crafting, salvage, inventory, or extra rewards are added.
+
+Run `node tests/debris.cjs` for randomized non-overlapping starts, thin plank
+clearance, rotation-aware contacts, off-center torque, mass comparisons, barrier
+blocking, no spontaneous drift, worthless collection, and sustained mixed-body
+simulation at phone sizes. Existing movement, combat, loot, manual-drop, stage,
+hopper, power-up, and progression suites remain applicable. Real iPhone/Safari
+performance and long-session feel still need hands-on playtesting.
