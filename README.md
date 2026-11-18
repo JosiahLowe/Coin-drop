@@ -7,8 +7,8 @@ No runtime dependencies, external assets, or build step.
 ## Play
 
 Open `index.html` in a modern browser, including Safari on iPhone. Play starts
-automatically. Defeat slimes to feed one physical coin into the rear slot beneath
-each slime's death position. Position kills to work different parts of the pile.
+automatically. Defeat slimes to feed trash, coins, or rare loot into the rear entry beneath
+each slime’s death position. Position kills to work different parts of the pile.
 Enemy deaths do not award wallet coins. Machine collections add one coin to the
 existing COINS balance, which starts at zero. Stored coins can be spent using DROP or F: one coin per press, aimed by the
 knight’s current horizontal center. Holding does not repeat.
@@ -388,3 +388,20 @@ blocking, no spontaneous drift, worthless collection, and sustained mixed-body
 simulation at phone sizes. Existing movement, combat, loot, manual-drop, stage,
 hopper, power-up, and progression suites remain applicable. Real iPhone/Safari
 performance and long-session feel still need hands-on playtesting.
+
+## Current enemy reward mix
+
+Each enemy now drops exactly one pusher reward instead of a guaranteed coin
+plus an optional item. `ENEMY_REWARDS` configures mutually exclusive outcomes:
+bones 35%, wood 25%, rocks 15% (75% worthless trash total), coin 20%, potion 2%,
+armor 1.5%, sword 1%, and chest 0.5% (5% items total). Every reward enters from
+above at the enemy death x, clamped for its footprint, through the existing
+spawn/physics system. Full or occupied entries defer rather than discard drops.
+Debris still has no collection reward. Stored coins still increase only from
+physical coin collection or existing loot/chest conversions. Independent
+walkway combat boosts retain their chance and single-pickup/active-boost gates.
+
+`node tests/enemy-rewards.cjs` checks deterministic distribution, each outcome,
+exactly-once deaths, shared upper entry, full-machine queuing, and worthless
+trash removal on phone viewports. Legacy reward/combat tests force the coin
+outcome where necessary to isolate their existing assertions.

@@ -44,7 +44,7 @@ header{margin-bottom:4px}h1{font-size:26px;margin:2px 0}.stats{padding-bottom:6p
 <footer><span>NO TOKENS REQUIRED</span><span>JUST ONE MORE DROP ↗</span></footer>
 </main>
 <script src="debris.js?v=clutter-1"></script>
-<script src="loot.js?v=hops-loot-1"></script>
+<script src="loot.js?v=trash-rewards-1"></script>
 <script src="knight.js?v=boosts-1"></script>
 <script src="waves.js?v=hops-loot-1"></script>
 <script src="progression.js?v=run-loot-1"></script>
@@ -79,7 +79,9 @@ let pusherY = 207, accumulator = 0, lastTime = null, particles = [];
 let bumpUsed = false, bumpFlash = 0;
 const pusherAt = t => 232 - 25 * Math.cos(t * 1.55);
 const combat = new DungeonCombat(dungeon, x => {
-  pendingCoinDrops.push(x); flushCoinDrops();loot.rollEnemy(x);flushLootDrops();
+  const reward=rollEnemyReward(loot.random);
+  if(reward.kind==='coin'){pendingCoinDrops.push(x);flushCoinDrops();}
+  else {loot.pending.push({id:'drop-'+loot.nextId++,type:reward.type,debris:reward.kind==='debris',entryX:x});flushLootDrops();}
 }, state => {
   const health = state.health;
   const hearts = document.getElementById('hearts');
@@ -180,7 +182,7 @@ function planStartingItems(){
 function flushLootDrops(){
  if(gamePaused)return;
  for(let index=0;index<loot.pending.length&&coins.length<180;){
-  const spec=loot.pending[index],d=LOOT_TYPES[spec.type],radius=Math.hypot(d.width,d.height)/2;
+  const spec=loot.pending[index],d=spec.debris?DEBRIS_TYPES[spec.type]:LOOT_TYPES[spec.type],radius=spec.debris?Math.max(...d.vertices.map(v=>Math.hypot(...v))):Math.hypot(d.width,d.height)/2;
   let x,y,z;
   if(spec.entryX!==undefined){
    x=Math.max(LEFT+radius,Math.min(RIGHT-radius,spec.entryX));y=BACK+radius+6;z=SHELF_HEIGHT+85;
@@ -195,7 +197,8 @@ function flushLootDrops(){
    if(!spot){spec.retryAt=time+.5;index++;continue;}
    x=spot.x;y=spot.y;z=0;
   }else{x=LEFT+radius+(RIGHT-LEFT-2*radius)*(spec.lane??.5);y=EDGE-radius-6;z=15;}
-  const body=coin(x,y,z);Object.assign(body,{loot:spec.type,id:spec.id,radius,mass:d.mass,resistance:d.friction,starting:!!spec.starting});coins.push(body);
+  const body=spec.debris?debrisBody(spec.type,x,y):coin(x,y,z);
+  Object.assign(body,{z,id:spec.id,radius,mass:d.mass,resistance:d.friction,starting:!!spec.starting});if(!spec.debris)body.loot=spec.type;coins.push(body);
   loot.pending.splice(index,1);
  }
 }

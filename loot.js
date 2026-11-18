@@ -9,7 +9,8 @@ const LOOT_TYPES = {
   key: { name:'Rusty Key', width:20, height:30, mass:1.1, friction:1, shape:'circle', color:'#daab79' }
 };
 const LOOT_SCHEDULE = {1:'potion',3:'sword',5:'armor',7:'chest',};
-const ENEMY_LOOT_CHANCES=[{type:'potion',chance:.04},{type:'armor',chance:.03},{type:'sword',chance:.02},{type:'chest',chance:.01}];
+const ENEMY_REWARDS=[{kind:'debris',type:'bone',chance:.35},{kind:'debris',type:'wood',chance:.25},{kind:'debris',type:'rock',chance:.15},{kind:'coin',chance:.20},{kind:'item',type:'potion',chance:.02},{kind:'item',type:'armor',chance:.015},{kind:'item',type:'sword',chance:.01},{kind:'item',type:'chest',chance:.005}];
+function rollEnemyReward(random=Math.random){let roll=random();for(const reward of ENEMY_REWARDS){roll-=reward.chance;if(roll<0)return reward;}return ENEMY_REWARDS.at(-1);}
 const CHEST_REWARDS = [{type:'potion'},{type:'sword'},{type:'armor'},{type:'coins',amount:5}];
 class PhysicalLoot {
   constructor(notify, awardCoins, random = Math.random) {
@@ -30,11 +31,6 @@ class PhysicalLoot {
     const types=['potion','sword','armor','chest'];
     for(let i=types.length-1;i>0;i--){const j=Math.floor(this.random()*(i+1));[types[i],types[j]]=[types[j],types[i]];}
     types.forEach(type=>this.pending.push({id:'loot-'+this.nextId++,type,starting:true}));
-  }
-  rollEnemy(x){
-    let roll=this.random();
-    for(const entry of ENEMY_LOOT_CHANCES){if(roll<entry.chance){this.pending.push({id:'loot-'+this.nextId++,type:entry.type,entryX:x});return entry.type;}roll-=entry.chance;}
-    return null;
   }
   collect(body) {
     if(this.isPaused?.() || (this.canCollect&&!this.canCollect(body)) || !body.falling || !body.loot || this.collectedIds.has(body.id))return;
