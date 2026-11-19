@@ -21,21 +21,22 @@ header{margin-bottom:4px}h1{font-size:26px;margin:2px 0}.stats{padding-bottom:6p
 .controls{margin-top:8px} .controls button{min-height:44px}
 @media(max-height:740px){main{max-width:350px}header{margin-bottom:4px}h1{font-size:26px}.hint{margin:6px 0}footer{margin-top:6px}}
 #hearts{color:#ed8c9b;letter-spacing:2px}#game-over:not([hidden]){display:flex;align-items:center;justify-content:space-between;margin-top:8px;color:#ffb5b5}#restart{min-height:44px;padding:0 20px;background:#ecca72}button:disabled{opacity:.45;cursor:default}
-.dungeon-hud{align-items:center;gap:6px;padding:7px 6px;letter-spacing:0;font-size:9px;height:40px;min-height:40px;overflow:hidden}
+.dungeon-hud{align-items:center;gap:6px;padding:2px 6px;letter-spacing:0;font-size:9px;height:28px;min-height:28px;overflow:hidden}
 #wave-status{flex:1;min-width:0;line-height:12px;height:24px;overflow:hidden}
 .hud-counter{display:flex;align-items:center;gap:3px;white-space:nowrap;font-size:8px}
 .hud-counter output{display:inline;font-size:12px}
 .dungeon-hud #hearts{font-size:11px;letter-spacing:0;white-space:nowrap}
 #loot-notice{font-size:12px;color:#f4d995;padding:5px;text-align:center}.controls{display:flex;justify-content:flex-end}#reset{width:64px}#drop{flex:1;min-height:52px;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 #pause{min-height:44px;width:44px;background:#2a3e2d;color:#edf3e5;font-size:24px}header{flex-direction:row-reverse}#pause-overlay:not([hidden]){position:fixed;inset:0;z-index:20;background:#101c17dc;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;font-size:28px}#resume{padding:0 30px;background:#ecca72}
-.run-hud{display:flex;align-items:center;justify-content:flex-end;gap:12px;height:44px;padding:0 8px;color:#ecca72;font-size:12px;border-bottom:1px solid #344b37}#potion{min-height:44px;min-width:56px;background:#413046;color:#ffd1dc;font-size:18px;touch-action:manipulation}.dungeon-hud #hearts{font-size:13px}
+.run-hud{display:flex;align-items:center;justify-content:flex-end;gap:8px;height:36px;padding:0 6px;color:#ecca72;font-size:12px;border-bottom:1px solid #344b37}#potion{display:flex;align-items:center;justify-content:center;gap:2px;min-height:36px;height:36px;min-width:50px;padding:0 5px;background:#413046;color:#ffd1dc;font-size:18px;touch-action:manipulation}.dungeon-hud #hearts{font-size:13px}
+#potion canvas{width:28px;height:28px;aspect-ratio:1}#potion-count{font-size:14px}.scoreboard{display:flex;gap:12px;letter-spacing:.06em;font-size:10px}.scoreboard output{display:inline;font-size:12px}header .label{line-height:16px}
 </style>
 </head>
 <body>
 <div id="pause-overlay" hidden><strong>PAUSED</strong><button id="resume" type="button">RESUME</button></div>
 <main>
-<header><button id="pause" type="button" aria-label="Pause game">Ⅱ</button><div><div class="label">POCKET ARCADE / 001</div><h1>COIN DROP<span>.</span></h1></div></header>
-<section class="machine" aria-label="Dungeon walkway and coin pusher"><div class="dungeon"><div class="bar dungeon-hud"><span id="wave-status" role="status">WAVE 1 · 3 LEFT</span><span class="hud-counter">COLLECTED <output id="score" aria-label="Available collected coins">0</output></span><span class="hud-counter">USED <output id="used" aria-label="Coins fed into the machine">0</output></span></div><div class="run-hud"><span id="hearts" role="status" aria-label="3 of 3 hearts">♥ ♥ ♥</span><button id="potion" type="button" aria-label="Use potion (H)">⚗ <span id="potion-count">0</span></button><span id="armor-count" aria-label="Armor charges">◇ 0</span><span id="sword-level" aria-label="Sword upgrade level">† 0/5</span></div><canvas id="dungeon" width="460" height="150" aria-label="Knight on a stone walkway. Move with arrows or A and D. Jump with Space, Up, or W."></canvas></div><canvas id="game" width="460" height="432" aria-label="Top-down, two-level coin pusher. Drop quarters on the upper shelf, build overlapping piles, and push coins off the lower deck.">Use Drop Coin to play.</canvas></section>
+<header><button id="pause" type="button" aria-label="Pause game">Ⅱ</button><div><div class="label scoreboard"><span>SCORE: <output id="run-score">0</output></span><span>BEST: <output id="best-score">0</output></span></div><h1>COIN DROP<span>.</span></h1></div></header>
+<section class="machine" aria-label="Dungeon walkway and coin pusher"><div class="dungeon"><div class="bar dungeon-hud"><span id="wave-status" role="status">WAVE 1 · 3 LEFT</span><span class="hud-counter">COINS <output id="score" aria-label="Available collected coins">0</output></span><span class="hud-counter">USED <output id="used" aria-label="Coins fed into the machine">0</output></span></div><div class="run-hud"><span id="hearts" role="status" aria-label="3 of 3 hearts">♥ ♥ ♥</span><button id="potion" type="button" aria-label="Use potion (H)"><canvas id="potion-icon" width="32" height="32" aria-hidden="true"></canvas><span id="potion-count">0</span></button><span id="armor-count" aria-label="Armor charges">◇ 0</span><span id="sword-level" aria-label="Sword upgrade level">† 0/5</span></div><canvas id="dungeon" width="460" height="150" aria-label="Knight on a stone walkway. Move with arrows or A and D. Jump with Space, Up, or W."></canvas></div><canvas id="game" width="460" height="432" aria-label="Top-down, two-level coin pusher. Drop quarters on the upper shelf, build overlapping piles, and push coins off the lower deck.">Use Drop Coin to play.</canvas></section>
 <div id="game-over" role="status" hidden><strong>GAME OVER</strong><button id="restart" type="button">Restart</button></div>
 <div class="knight-controls" role="group" aria-label="Knight movement"><button type="button" data-knight="left" aria-label="Move left" aria-pressed="false">←</button><button type="button" data-knight="right" aria-label="Move right" aria-pressed="false">→</button><button type="button" data-knight="jump" aria-label="Jump" aria-pressed="false">JUMP</button></div>
 <div class="controls"><button id="drop" type="button" aria-label="Drop one collected coin (F)">DROP · 1 COIN</button><button id="reset" type="button" aria-label="Reset game" title="Reset game">↺</button></div>
@@ -67,6 +68,25 @@ const STARTING_COINS = 0;
 const MANUAL_DROP_CONFIG = { cooldown:.15 };
 let manualDropRemaining=0;
 let coins = [], score = STARTING_COINS, used = 0, time = 0;
+// `score` remains the existing spendable balance; points are separate.
+const BEST_SCORE_KEY='coin-drop-best-score';
+let runScore=0,bestScore=0;
+try { const saved=Number(localStorage.getItem(BEST_SCORE_KEY));if(Number.isSafeInteger(saved)&&saved>0)bestScore=saved; } catch {}
+function refreshPoints(){
+ document.getElementById('run-score').textContent=runScore;
+ document.getElementById('best-score').textContent=bestScore;
+}
+function resetPoints(){runScore=0;refreshPoints();}
+function collectCoin(c){
+ if(c.red){
+  runScore++;
+  if(runScore>bestScore){bestScore=runScore;try{localStorage.setItem(BEST_SCORE_KEY,String(bestScore));}catch{}}
+  refreshPoints();
+ }else{score++;scoreElement.textContent=score;refreshDropButton();}
+}
+refreshPoints();
+// Render the HUD bottle with the very same artwork used on the deck.
+drawLoot(document.getElementById('potion-icon').getContext('2d'),{loot:'potion',x:16,y:16,z:0,radius:15});
 let pendingCoinDrops = [];
 let machineReady=false;
 let startingPlans=[],startingFallbacks=[];
@@ -110,7 +130,7 @@ function coin(x, y, z = 0) {
   return { x, y, z, vx: 0, vy: 0, vz: 0, angle: Math.random() * Math.PI * 2, falling: false, tip: 0, pinned: false, load: 1, support: null, stackLevel: 0, bumpImpulse: 0, bumpElapsed: 0 };
 }
 function reset() {
-  manualDropRemaining=0;
+  manualDropRemaining=0;resetPoints();
   time = 0; pusherY = pusherAt(0); coins = []; particles = []; pendingCoinDrops = []; loot.pending = [];
   startingPlans=planStartingItems();
   updateAim();
@@ -140,11 +160,11 @@ function reset() {
   scoreElement.textContent = score;refreshDropButton(); usedElement.textContent = '0';
 }
 // Shared normal rear entry for manual and enemy-generated coins.
-function spawnCoin(x) {
+function spawnCoin(x, red = false) {
   if(gamePaused)return false;
   if (coins.length >= 180) return false;
   const c = coin(Math.max(LEFT + R, Math.min(RIGHT - R, x)), BACK + R + 6, SHELF_HEIGHT + 85);
-  c.vx = 0; c.vy = 0;
+  c.vx = 0; c.vy = 0; c.red = red;
   coins.push(c); used++; usedElement.textContent = used;
   return true;
 }
@@ -166,7 +186,7 @@ function updateManualDrop(dt){
 function drop() {
   if (gamePaused || combat.health.dead || score < 1 || manualDropRemaining>1e-8) return false;
   updateAim();
-  if (!spawnCoin(dropX)) return;
+  if (!spawnCoin(dropX, true)) return;
   score--; scoreElement.textContent = score;refreshDropButton();
   manualDropRemaining=MANUAL_DROP_CONFIG.cooldown;refreshDropButton();return true;
 }
@@ -427,7 +447,7 @@ function simulate(dt) {
     if (c.falling && (c.z < -65 || c.y > EDGE + 65)) {
       if(c.token){collectToken(c);return false;}
       if(c.loot){loot.collect(c);return false;}
-      score++; scoreElement.textContent = score;refreshDropButton();
+      collectCoin(c);
       particles.push({ x: c.x, y: EDGE + 44, life: 1 }); return false;
     }
     return true;
@@ -454,7 +474,7 @@ function drawCoin(c) {
   // A dark rim and offset face distinguish overlapping quarters from flat coins.
   ctx.fillStyle = '#926b32'; ctx.beginPath(); ctx.arc(0, 3, R, 0, Math.PI * 2); ctx.fill();
   ctx.rotate(c.angle); ctx.shadowColor = '#0008'; ctx.shadowBlur = 4; ctx.shadowOffsetY = 3;
-  ctx.fillStyle = '#e6bd62'; ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.fill(); ctx.shadowColor = 'transparent';
+  ctx.fillStyle = c.red ? '#c84343' : '#e6bd62'; ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.fill(); ctx.shadowColor = 'transparent';
   ctx.strokeStyle = '#ffe7a4'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(0, 0, R - 2, 0, Math.PI * 2); ctx.stroke();
   ctx.fillStyle = '#956c30'; ctx.font = 'bold 9px sans-serif'; ctx.fillText('25', 0, 3.5); ctx.restore();
 }
@@ -542,7 +562,7 @@ function frame(now) {
   while (accumulator >= STEP) { updateManualDrop(STEP); simulate(STEP); ensureToken(); flushCoinDrops(); flushLootDrops(); loot.update(STEP); dungeon.update(STEP); combat.update(STEP); accumulator -= STEP; }
   updateAim(); draw(); dungeon.draw(); requestAnimationFrame(frame);
 }
-document.getElementById('restart').addEventListener('click', () => { setPaused(false);combat.restart();restartStartingLoot();manualDropRemaining=0;refreshDropButton();resetToken(); updateAim(); document.getElementById('restart').blur(); });
+document.getElementById('restart').addEventListener('click', () => { setPaused(false);combat.restart();resetPoints();restartStartingLoot();manualDropRemaining=0;refreshDropButton();resetToken(); updateAim(); document.getElementById('restart').blur(); });
 const dropButton=document.getElementById('drop');
 dropButton.addEventListener('pointerdown',e=>{if(e.button!==0)return;e.preventDefault();drop();});
 dropButton.addEventListener('click',e=>{if(e.detail===0&&!e.pointerType)drop();});

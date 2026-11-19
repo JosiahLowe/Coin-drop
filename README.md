@@ -9,14 +9,19 @@ No runtime dependencies, external assets, or build step.
 Open `index.html` in a modern browser, including Safari on iPhone. Play starts
 automatically. Defeat slimes to feed one physical coin into the rear slot beneath
 each slime's death position. Position kills to work different parts of the pile.
-Enemy deaths do not award wallet coins. Machine collections add one coin to the
-existing COINS balance, which starts at zero. Stored coins can be spent using DROP or F: one coin per press, aimed by the
+Enemy deaths do not award wallet coins. Fresh gold coin collections add one coin to the
+existing COINS balance, which starts at zero. Manual drops create red-and-gold coins
+with identical physics. Collecting a red coin awards one SCORE point, removes the
+coin permanently, and does not replenish COINS. Gold collections never score.
+BEST is saved in browser localStorage when exceeded (or kept in memory if storage
+is unavailable). Reload, machine reset, and combat restart clear SCORE but retain
+BEST; combat restart preserves the existing stored balance and machine. Stored coins can be spent using DROP or F: one coin per press, aimed by the
 knight’s current horizontal center. Holding does not repeat.
 
 Tap **↺** to refill the machine with 84 coins in partly filled rows with clearance around the initial potion and two small stacks,
 clear queued feeds and physical loot, and reset COINS and USED to zero. USED counts coins fed into
 the machine from either source, excluding the starting pile. This machine reset
-does not reset combat. The GAME OVER Restart button resets combat and waves only.
+does not reset combat. The GAME OVER Restart button resets combat, stages, run upgrades, and SCORE.
 
 For local HTTP hosting, run `python3 -m http.server 8000` in this directory
 and open `http://localhost:8000`.
@@ -351,3 +356,10 @@ ground footprint, and get the first free physics slot ahead of queued rewards.
 The 180-body cap still applies; full boards wait only until a slot opens.
 Initial/reset tokens prefer the existing clear ground placement, with falling
 entry as a safe fallback. Collection and duplicate-transition guards are unchanged.
+
+### Coin lifecycle verification
+
+`node tests/coin-lifecycle.cjs` checks gold supply, red spending/scoring and removal,
+identical physical trajectories, enemy gold drops, pause/death restrictions, restart
+and reload persistence, unavailable storage, and compact HUD geometry at 320, 390,
+and 1280 pixel widths. The potion HUD uses the same `drawLoot` renderer as deck loot.
