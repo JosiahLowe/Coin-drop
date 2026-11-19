@@ -101,6 +101,7 @@ class Slime {
 class DungeonCombat {
   constructor(knight, reward, onChange = () => {}, config = COMBAT_CONFIG) {
     this.knight = knight; this.reward = reward; this.onChange = onChange; this.config = config;
+    this.pendingRevengeEnemies=[];
     this.health = new PlayerHealth(config.player); this.waves = new WaveManager();
     this.originalSwordReach=config.sword.reach;
     this.runLoot=new RunLoot(amount=>this.awardStoredCoins?.(amount));
@@ -133,7 +134,9 @@ class DungeonCombat {
     k.x = Math.max(k.left + 32, Math.min(k.right - 32, k.x + h.direction * this.config.player.knockbackSpeed * shove));
     for (const p of this.effects) { p.life -= dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 160 * dt; }
     this.effects = this.effects.filter(p => p.life > 0);
-    this.waves.update(dt, (side,spec) => this.spawnEnemy(side,spec),this.enemies.length);
+    // Revenge enemies are extra threats; they do not consume normal spawn slots.
+    while(this.pendingRevengeEnemies.length)this.spawnRevenge(this.pendingRevengeEnemies.shift());
+    this.waves.update(dt, (side,spec) => this.spawnEnemy(side,spec),this.enemies.filter(e=>!e.revenge).length);
     // Every sword collision resolves before any body contact, including
     // when several enemies reach the knight in the same simulation step.
     for (const e of this.enemies) {
@@ -143,8 +146,8 @@ class DungeonCombat {
     }
     this.enemies = this.enemies.filter(e => !e.defeated);
     for (const e of this.enemies) {
-      if (!k.shielded && e.hitTimer <= 1e-8 && overlaps(this.bodyBox(), e.box(k.floor))) {
-        if (this.contactDamage(e.config.damage, k.x >= e.x ? 1 : -1) && h.dead) {
+      if (e.hitTimer <= 1e-8 && overlaps(this.bodyBox(), e.box(k.floor))) {
+        if (this.contactDamage(e.config.damage, k.x >= e.x ? 1 : -1, e) && h.dead) {
           k.disabled = true; k.clearInput(); k.vy = 0;this.powerups.apply(false);
         }
       }
@@ -152,9 +155,12 @@ class DungeonCombat {
     this.onChange(this);
     k.damageAlpha = h.invulnerable > 0 && Math.floor(h.invulnerable * 14) % 2 ? .3 : 1;
   }
-  contactDamage(amount,direction){
+  contactDamage(amount,direction,attacker){
     const h=this.health;
-    if(this.knight.paused||this.knight.shielded||h.dead||h.invulnerable>1e-8)return false;
+    if(this.knight.paused||h.dead||h.invulnerable>1e-8)return false;
+    // This hook runs only after the shared hit gate, including armor blocks.
+    if(attacker)this.onValidHit?.(this.knight.x,{type:attacker.type||'slime',modifiers:structuredClone(attacker.config)});
+    if(this.knight.shielded){h.invulnerable=h.config.invulnerability;return false;}
     if(this.runLoot.armor){this.runLoot.armor--;h.invulnerable=h.config.invulnerability;h.knockback=h.config.knockbackTime;h.direction=direction;return false;}
     return h.damage(amount,direction);
   }
@@ -169,7 +175,13 @@ class DungeonCombat {
     let x = side > 0 ? k.right - radius : k.left + radius;
     if (Math.abs(x - k.x) < 110) x = x > (k.left + k.right) / 2 ? k.left + radius : k.right - radius;
     const config={...this.config.slime,...spec.modifiers,...spec.appearance};
-    this.enemies.push(new Slime(x, config, (config.movement==='patrol'?(x<(k.left+k.right)/2?1:-1):Math.sign(k.x-x))));
+    const enemy=new Slime(x, config, (config.movement==='patrol'?(x<(k.left+k.right)/2?1:-1):Math.sign(k.x-x)));
+    enemy.type=spec.type;this.enemies.push(enemy);return enemy;
+  }
+  spawnRevenge(spec){
+    if(this.knight.paused||this.health.dead){this.pendingRevengeEnemies.push(structuredClone(spec));return;}
+    const enemy=this.spawnEnemy(Math.random()<.5?-1:1,structuredClone(spec));
+    enemy.revenge=true;return enemy;
   }
   defeatEnemy(e) {
     if (this.knight.paused || e.defeated || e.hp > 0) return;

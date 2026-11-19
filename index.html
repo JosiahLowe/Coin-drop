@@ -49,7 +49,7 @@ header{margin-bottom:4px}h1{font-size:26px;margin:2px 0}.stats{padding-bottom:6p
 <script src="waves.js?v=hops-loot-1"></script>
 <script src="progression.js?v=run-loot-1"></script>
 <script src="powerups.js?v=single-boost-1"></script>
-<script src="combat.js?v=hops-loot-1"></script>
+<script src="combat.js?v=revenge-1"></script>
 <script>
 'use strict';
 const canvas = document.getElementById('game');
@@ -78,7 +78,9 @@ function refreshPoints(){
 }
 function resetPoints(){runScore=0;refreshPoints();}
 function collectCoin(c){
- if(c.red){
+ if(c.revenge){
+  if(!c.revengeRedeemed){c.revengeRedeemed=true;combat.spawnRevenge(c.revenge);}
+ }else if(c.red){
   runScore++;
   if(runScore>bestScore){bestScore=runScore;try{localStorage.setItem(BEST_SCORE_KEY,String(bestScore));}catch{}}
   refreshPoints();
@@ -120,6 +122,13 @@ const combat = new DungeonCombat(dungeon, x => {
   if (status.textContent !== message) status.textContent = message;
   for (const button of dungeon.buttons) button.disabled = health.dead;
 });
+combat.onValidHit=(x,enemySpec)=>{
+ if(score<1)return;
+ score--;scoreElement.textContent=score;
+ const reward={x,revenge:structuredClone(enemySpec)};
+ if(!spawnCoin(x,false,reward.revenge))pendingCoinDrops.push(reward);
+ refreshDropButton();
+};
 combat.awardStoredCoins=amount=>{score+=amount;scoreElement.textContent=score;refreshDropButton();};
 loot.applyReward=type=>combat.applyLoot(type);
 loot.isPaused=()=>gamePaused;
@@ -160,11 +169,11 @@ function reset() {
   scoreElement.textContent = score;refreshDropButton(); usedElement.textContent = '0';
 }
 // Shared normal rear entry for manual and enemy-generated coins.
-function spawnCoin(x, red = false) {
+function spawnCoin(x, red = false, revenge = null) {
   if(gamePaused)return false;
   if (coins.length >= 180) return false;
   const c = coin(Math.max(LEFT + R, Math.min(RIGHT - R, x)), BACK + R + 6, SHELF_HEIGHT + 85);
-  c.vx = 0; c.vy = 0; c.red = red;
+  c.vx = 0; c.vy = 0; c.red = red;if(revenge)c.revenge=structuredClone(revenge);
   coins.push(c); used++; usedElement.textContent = used;
   return true;
 }
@@ -173,7 +182,8 @@ function flushCoinDrops() {
   // Retain earned drops at the active-coin cap rather than losing rewards
   // or changing the bounded physics workload. Restart preserves this queue.
   while (pendingCoinDrops.length && coins.length < 180) {
-    spawnCoin(pendingCoinDrops.shift());
+    const reward=pendingCoinDrops.shift();
+    if(typeof reward==='number')spawnCoin(reward);else spawnCoin(reward.x,false,reward.revenge);
   }
 }
 function refreshDropButton(state=combat){
@@ -448,7 +458,7 @@ function simulate(dt) {
       if(c.token){collectToken(c);return false;}
       if(c.loot){loot.collect(c);return false;}
       collectCoin(c);
-      particles.push({ x: c.x, y: EDGE + 44, life: 1 }); return false;
+      if(!c.revenge)particles.push({ x: c.x, y: EDGE + 44, life: 1 }); return false;
     }
     return true;
   });
@@ -474,7 +484,7 @@ function drawCoin(c) {
   // A dark rim and offset face distinguish overlapping quarters from flat coins.
   ctx.fillStyle = '#926b32'; ctx.beginPath(); ctx.arc(0, 3, R, 0, Math.PI * 2); ctx.fill();
   ctx.rotate(c.angle); ctx.shadowColor = '#0008'; ctx.shadowBlur = 4; ctx.shadowOffsetY = 3;
-  ctx.fillStyle = c.red ? '#c84343' : '#e6bd62'; ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.fill(); ctx.shadowColor = 'transparent';
+  ctx.fillStyle = c.revenge ? '#29282d' : c.red ? '#c84343' : '#e6bd62'; ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.fill(); ctx.shadowColor = 'transparent';
   ctx.strokeStyle = '#ffe7a4'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(0, 0, R - 2, 0, Math.PI * 2); ctx.stroke();
   ctx.fillStyle = '#956c30'; ctx.font = 'bold 9px sans-serif'; ctx.fillText('25', 0, 3.5); ctx.restore();
 }

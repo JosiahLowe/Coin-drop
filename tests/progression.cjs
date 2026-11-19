@@ -14,7 +14,7 @@ combat.health.hearts=2;check(run.usePotion(combat)&&run.potions===0&&combat.heal
 for(let i=0;i<3;i++)collect('potion');const before=score;collect('potion');check(run.potions===3&&score===before+3,'Potion cap');
 for(let i=0;i<3;i++)collect('armor');const beforeArmor=score;collect('armor');check(run.armor===3&&score===beforeArmor+5,'Armor cap');
 combat.health.invulnerable=0;combat.contactDamage(1,1);check(run.armor===2&&combat.health.hearts===3,'Armor block');combat.contactDamage(1,1);check(run.armor===2,'Armor cooldown');combat.powerups.activate('shield');combat.health.invulnerable=0;combat.contactDamage(1,1);check(run.armor===2,'Shield consumed armor');
-combat.powerups.update(10,{x:0,y:0,w:0,h:0});combat.contactDamage(1,1);check(run.armor===1,'Shield expiry armor');
+combat.powerups.update(10,{x:0,y:0,w:0,h:0});combat.health.update(10);combat.contactDamage(1,1);check(run.armor===1,'Shield expiry armor');
 const prior={...run};combat.waves.advance();check(run.swordLevel===5&&run.potions===3&&run.armor===1,'Stage reset');
 setPaused(true);combat.health.hearts=2;check(!run.usePotion(combat),'Paused potion');const id='paused-item';const c=Object.assign(coin(230,EDGE+1,-66),{id,loot:'armor',falling:true});loot.collect(c);check(!loot.collectedIds.has(id),'Paused collection');setPaused(false);
 // Chests use the same capped reward functions, once.

@@ -363,3 +363,26 @@ entry as a safe fallback. Collection and duplicate-transition guards are unchang
 identical physical trajectories, enemy gold drops, pause/death restrictions, restart
 and reload persistence, unavailable storage, and compact HUD geometry at 320, 390,
 and 1280 pixel widths. The potion HUD uses the same `drawLoot` renderer as deck loot.
+
+### Damage penalties and Revenge Coins
+
+A valid enemy body hit spends one available COINS balance and feeds a charcoal
+coin through the normal rear entry at the knight's hit position. Armor and Shield
+still protect hearts (Shield preserves armor too), but neither prevents the coin
+penalty. The existing one-second hit invulnerability gates both health and coin
+loss. Empty balances produce no coin. Black coins retain gold rims and details
+and use the same physical body as gold/red coins.
+
+Each black coin stores a copied enemy type/configuration, independent of its
+attacker's later death or stage changes. Collection removes it once and spawns a
+fresh equivalent enemy at a normal safe side location, with no supply or score
+reward. These extra enemies do not consume the normal stage spawn slots or alter
+its clock. Their normal deaths and attacks work unchanged. At the machine's
+180-body cap, paid black drops use the existing deferred coin queue. Collection
+during game over defers the enemy until combat resumes after restart; pause freezes
+collection entirely. Machine reset clears queued physical drops as before.
+
+`node tests/revenge.cjs` verifies armor/Shield penalties, zero balance, repeated
+contact cooldowns, real body collision, fatal hits, independent saved enemy
+configurations (including hoppers), collection identity, revenge chains, full-board
+queues, normal spawn slots, and the charcoal face color at desktop/mobile widths.
