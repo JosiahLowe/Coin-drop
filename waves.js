@@ -5,16 +5,17 @@ const STAGE_DEFINITIONS = {
 };
 STAGE_DEFINITIONS[3]={spawnInterval:3,maxEnemies:12,randomSides:true,enemies:[
  {...STAGE_DEFINITIONS[2].enemies[0],probability:.5,appearance:{color:'#68bfff'}},
- {...STAGE_DEFINITIONS[2].enemies[0],probability:.5,appearance:{color:'#68bfff'},modifiers:{...STAGE_DEFINITIONS[2].enemies[0].modifiers,hop:{minInterval:3,maxInterval:6,prepare:.2,velocity:280,gravity:800}}}
+ {...STAGE_DEFINITIONS[2].enemies[0],probability:.5,appearance:{color:'#68bfff'},modifiers:{...STAGE_DEFINITIONS[2].enemies[0].modifiers,hop:{minInterval:1.5,maxInterval:3,prepare:.2,velocity:280,gravity:800}}}
 ]};
-// Independent Stage 1 bat test cycle; slime timing remains unchanged.
-STAGE_DEFINITIONS[1].bat={respawnDelay:15};
+// Keep one bat cycle running across stages without resetting its clock.
+const BAT_SPAWN_CONFIG={respawnDelay:15};
+Object.values(STAGE_DEFINITIONS).forEach(stage=>stage.bat=BAT_SPAWN_CONFIG);
 class WaveManager {
   constructor(){this.reset();}
   reset(){this.wave=1;this.side=1;this.timer=0;this.spawned=0;this.batTimer=0;}
   get definition(){return STAGE_DEFINITIONS[this.wave]||STAGE_DEFINITIONS[3];}
   advance(){this.wave++;} // Preserve the current spawn clock and side.
-  enemyDefeated(enemy){if(enemy.type==='bat')this.batTimer=STAGE_DEFINITIONS[1].bat.respawnDelay;}
+  enemyDefeated(enemy){if(enemy.type==='bat')this.batTimer=BAT_SPAWN_CONFIG.respawnDelay;}
   updateBat(dt,spawn,active){
     if(!this.definition.bat||active)return;
     this.batTimer=Math.max(0,this.batTimer-dt);

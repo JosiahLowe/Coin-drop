@@ -40,7 +40,12 @@ console.log(await p.evaluate(()=>{
  combat.waves.updateBat(.01,spawn,false);check(combat.enemies.filter(e=>e.type==='bat').length===1,'15 second replacement');
  combat.waves.updateBat(100,spawn,true);check(combat.enemies.filter(e=>e.type==='bat').length===1,'Duplicate bat');
  const survivor=combat.enemies.find(e=>e.type==='bat');combat.waves.advance();combat.update(STEP);check(combat.enemies.includes(survivor),'Stage transition removed bat');
- combat.enemies=[];combat.waves.updateBat(100,spawn,false);check(!combat.enemies.length,'Later-stage bat testing');
+ survivor.hp=0;combat.defeatEnemy(survivor);combat.enemies=combat.enemies.filter(e=>!e.defeated);
+ combat.waves.updateBat(5,spawn,false);check(combat.waves.batTimer===10,'Stage 2 countdown');
+ combat.waves.advance();check(combat.waves.batTimer===10,'Transition reset bat countdown');
+ combat.waves.updateBat(9.99,spawn,false);check(!combat.enemies.some(e=>e.type==='bat'),'Early Stage 3 bat');
+ combat.waves.updateBat(.01,spawn,false);check(combat.enemies.filter(e=>e.type==='bat').length===1,'Stage 3 bat respawn');
+ const persistent=combat.enemies.find(e=>e.type==='bat');combat.waves.advance();combat.waves.updateBat(100,spawn,true);check(combat.enemies.includes(persistent)&&combat.enemies.filter(e=>e.type==='bat').length===1,'Fallback stage duplicated bat');
  document.getElementById('restart').click();check(combat.waves.wave===1&&combat.enemies.filter(e=>e.type==='bat').length===1&&!coins.some(c=>c.loot),'Restart setup');
  // Mobile-size view shows the three wing poses and ceiling crawler.
  combat.enemies=[-1,1].map(side=>new Bat(side,bounds));const flutter=new Bat(-1,bounds);flutter.x=230;flutter.y=60;flutter.enter('FLUTTER',1);combat.enemies.push(flutter);dungeon.draw();draw();

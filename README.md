@@ -5,7 +5,7 @@ A separate side-view dungeon walkway sits above the machine.
 No runtime dependencies, external assets, or build step.
 
 Current testing setup: coin-only starting tables (plus the NEXT WAVE token),
-no pre-seeded loot, and a Stage 1 ceiling bat that returns 15 seconds after
+no pre-seeded loot, and a persistent ceiling bat cycle that returns 15 seconds after
 the last bat dies. Slime loot drops remain enabled.
 
 ## Play
@@ -332,7 +332,7 @@ patrol/pause behavior and three-second interval. Stage 3 selects regular and
 hopping blue slimes equally. Later counters safely reuse Stage 3, with no new
 stages designed. Old enemies retain their own configuration across transitions.
 
-Hoppers have independent 3–6-second gameplay timers. A 0.2-second compression
+Hoppers have independent 1.5–3-second gameplay timers. A 0.2-second compression
 precedes a roughly 49-unit hop. During preparation they stop voluntary movement;
 in the air they keep patrolling horizontally, freeze random-pause opportunities,
 and remain vulnerable through height-aware body/sword hitboxes. They land before
@@ -394,7 +394,8 @@ It crawls into view from beyond a random screen edge, with no player-position
 fallback, and stays on the ceiling until it has entered the battlefield.
 After the last bat dies, a replacement enters after 15 seconds of gameplay time.
 Pause/death freeze this clock; restart clears it and creates one initial bat.
-The testing cycle runs only in Stage 1; living bats persist through transitions.
+The bat cycle runs in every stage, including the fallback stage configuration.
+Living bats and the remaining 15-second respawn countdown persist through transitions.
 Revenge Coins may bring additional bats back; these remain outside normal spawn
 slots, like other revenge enemies.
 
@@ -414,7 +415,7 @@ skip every reward roll, including coins, items, and temporary boosts.
 `node tests/bat.cjs` checks both entry sides, all movement states, repeated edge
 cycles, direction changes, no player reads, equivalent 30/120 Hz flight, smooth
 movement, one-hit kills, no rewards, armor/health, revenge chains and respawns,
-pause/resume, Stage 1 entry and 15-second respawns, and desktop/mobile rendering.
+pause/resume, Stage 1 entry, persistent cross-stage 15-second respawns, and desktop/mobile rendering.
 
 ### Random slime entry sides
 
