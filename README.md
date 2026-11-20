@@ -386,3 +386,29 @@ collection entirely. Machine reset clears queued physical drops as before.
 contact cooldowns, real body collision, fatal hits, independent saved enemy
 configurations (including hoppers), collection identity, revenge chains, full-board
 queues, normal spawn slots, and the charcoal face color at desktop/mobile widths.
+
+### Bat enemy
+
+Stage 2 introduces one bat per run alongside the unchanged three-second slime
+schedule. It enters from a random ceiling edge, with no player-position fallback.
+The intro is separate from ordinary spawn counts and does not repeat after death.
+Revenge Coins may bring additional bats back; these remain outside normal spawn
+slots, like other revenge enemies.
+
+`bat.js` owns a bounded, independent CEILING_CRAWL → DROP → FLUTTER → SWOOP →
+RETURN_TO_CEILING cycle. It reads only battlefield bounds/floor, never knight
+position. Crawl reverses at walls; each swoop selects a fitting direction and uses
+continuous horizontal easing with a sine-squared vertical arc. Duration includes
+vertical distance to avoid fast narrow dives. The low point is within the normal
+sword path. Wings use three stepped pixel poses, folding upside down on the ceiling.
+
+`BAT_CONFIG` controls crawl speed/durations, drop distance/duration, flutter time,
+swoop speed/distance/minimum ground clearance, climb speed, and combat dimensions.
+Bats have 1 HP and contact damage only while airborne. They use the shared sword,
+armor, Shield, invulnerability, pause/death and Revenge Coin systems. Bat deaths
+skip every reward roll, including coins, items, and temporary boosts.
+
+`node tests/bat.cjs` checks both entry sides, all movement states, repeated edge
+cycles, direction changes, no player reads, equivalent 30/120 Hz flight, smooth
+movement, one-hit kills, no rewards, armor/health, revenge chains and respawns,
+pause/resume, one Stage 2 introduction, and desktop/mobile rendering.

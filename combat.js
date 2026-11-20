@@ -146,7 +146,7 @@ class DungeonCombat {
     }
     this.enemies = this.enemies.filter(e => !e.defeated);
     for (const e of this.enemies) {
-      if (e.hitTimer <= 1e-8 && overlaps(this.bodyBox(), e.box(k.floor))) {
+      if (e.canContact!==false && e.hitTimer <= 1e-8 && overlaps(this.bodyBox(), e.box(k.floor))) {
         if (this.contactDamage(e.config.damage, k.x >= e.x ? 1 : -1, e) && h.dead) {
           k.disabled = true; k.clearInput(); k.vy = 0;this.powerups.apply(false);
         }
@@ -171,7 +171,12 @@ class DungeonCombat {
   }
   spawnEnemy(side,spec=this.waves.definition.enemies[0]) {
     if(this.knight.paused)return;
-    const k = this.knight, radius = this.config.slime.radius;
+    const k = this.knight;
+    if(spec.type==='bat'){
+      const enemy=new Bat(side,{left:k.left,right:k.right,floor:k.floor},{...BAT_CONFIG,...spec.modifiers,...spec.appearance});
+      this.enemies.push(enemy);return enemy;
+    }
+    const radius = this.config.slime.radius;
     let x = side > 0 ? k.right - radius : k.left + radius;
     if (Math.abs(x - k.x) < 110) x = x > (k.left + k.right) / 2 ? k.left + radius : k.right - radius;
     const config={...this.config.slime,...spec.modifiers,...spec.appearance};
@@ -187,7 +192,7 @@ class DungeonCombat {
     if (this.knight.paused || e.defeated || e.hp > 0) return;
     e.defeated = true;
     for (let i = 0; i < 7; i++) this.effects.push({ x: e.x, y: this.knight.floor - e.height - 16, vx: Math.cos(i * 2.4) * 38, vy: -30 - i * 5, life: .4 });
-    this.reward(e.x);this.powerups.rollDrop(e.x);
+    if(e.type!=='bat'){this.reward(e.x);this.powerups.rollDrop(e.x);}
   }
   drawEnemies(ctx) {
     this.powerups.draw(ctx);
