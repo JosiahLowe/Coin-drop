@@ -6,9 +6,10 @@ class Bat {
     this.type='bat';this.config=config;this.random=random;
     this.left=bounds.left+config.radius;this.right=bounds.right-config.radius;
     this.floor=bounds.floor;this.ceiling=config.height/2+2;
-    this.x=side>0?this.right:this.left;this.y=this.ceiling;
+    this.entryLeft=-config.radius;this.entryRight=(bounds.width||bounds.right+bounds.left)+config.radius;
+    this.x=side>0?this.entryRight:this.entryLeft;this.y=this.ceiling;this.entering=true;
     this.moveDirection=side>0?-1:1;this.hp=config.health;this.hitTimer=0;this.age=0;
-    this.enter('CEILING_CRAWL',this.crawlDuration());
+    this.enter('CEILING_CRAWL',this.crawlDuration()+Math.abs(this.x-(side>0?this.right:this.left))/config.crawlSpeed);
   }
   get height(){return this.floor-this.y;}
   get canContact(){return this.state!=='CEILING_CRAWL';}
@@ -38,8 +39,9 @@ class Bat {
       const t=Math.min(1,this.elapsed/this.duration),c=this.config;
       if(this.state==='CEILING_CRAWL'){
         this.x+=this.moveDirection*c.crawlSpeed*step;
+        if(this.entering&&this.x>=this.left&&this.x<=this.right)this.entering=false;
         // Reflect the overshoot so edge reversals do not depend on frame rate.
-        while(this.x<this.left||this.x>this.right){if(this.x<this.left){this.x=2*this.left-this.x;this.moveDirection=1;}else{this.x=2*this.right-this.x;this.moveDirection=-1;}}
+        while(!this.entering&&(this.x<this.left||this.x>this.right)){if(this.x<this.left){this.x=2*this.left-this.x;this.moveDirection=1;}else{this.x=2*this.right-this.x;this.moveDirection=-1;}}
       }else if(this.state==='DROP')this.y=this.startY+c.dropDistance*this.smooth(t);
       else if(this.state==='FLUTTER')this.y=this.startY+2*Math.sin(t*Math.PI*2);
       else if(this.state==='SWOOP'){

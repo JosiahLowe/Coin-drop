@@ -112,9 +112,9 @@ const root = path.join(__dirname, '..');
      if(coins.length>180||coins.some(c=>![c.x,c.y,c.z,c.vx,c.vy,c.vz].every(Number.isFinite)))throw Error('Invalid coin physics');
     }
     const drops=used;reset();draw();dungeon.draw();
-    return {original,collected,drops,reset:score===STARTING_COINS&&used===0&&coins.length>40&&coins.length<=84};
+    return {original,collected,drops,reset:score===STARTING_COINS&&used===0&&coins.length>40&&coins.length<=100};
    });
-   assert(physics.original>40&&physics.original<=84);assert.equal(physics.drops,60);assert(physics.reset);
+   assert(physics.original>40&&physics.original<=100);assert.equal(physics.drops,60);assert(physics.reset);
    const layout=await page.evaluate(()=>{
     const d=document.querySelector('#dungeon').getBoundingClientRect(),g=document.querySelector('#game').getBoundingClientRect();
     return {top:d.top,bottom:g.bottom,height:innerHeight,aligned:Math.abs(d.left-g.left)<1&&Math.abs(d.width-g.width)<1,visible:d.top>=0&&g.bottom<=innerHeight,width:document.documentElement.scrollWidth<=innerWidth,touch:getComputedStyle(document.querySelector('[data-knight]')).touchAction,selection:getComputedStyle(document.querySelector('[data-knight]')).userSelect,controlsBelow:document.querySelector('.knight-controls').getBoundingClientRect().top>=g.bottom};

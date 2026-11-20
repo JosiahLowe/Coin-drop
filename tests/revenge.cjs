@@ -34,7 +34,7 @@ console.log(await p.evaluate(()=>{
  clean();attacker=combat.enemies[0];coins=Array.from({length:180},()=>coin(230,130,30));hit(attacker);check(score===2&&pendingCoinDrops.length===1&&coins.length===180,'Full pusher queue');
  coins.pop();flushCoinDrops();check(pendingCoinDrops.length===0&&coins.at(-1).revenge&&score===2,'Queued black coin');
  // Revenge enemies do not consume the twelve ordinary spawn slots.
- clean();combat.enemies=[];for(let i=0;i<12;i++)combat.spawnRevenge({type:'slime',modifiers:COMBAT_CONFIG.slime});combat.waves.timer=0;combat.update(STEP);check(combat.waves.spawned===2&&combat.enemies.length===13,'Normal spawn slots');
+ clean();combat.enemies=[];for(let i=0;i<12;i++)combat.spawnRevenge({type:'slime',modifiers:COMBAT_CONFIG.slime});combat.waves.timer=0;combat.update(STEP);check(combat.waves.spawned===2&&combat.enemies.filter(e=>e.type!=='bat').length===13,'Normal spawn slots');
  // All variants preserve their appearance and stats after changing stages.
  for(const spec of [STAGE_DEFINITIONS[1].enemies[0],STAGE_DEFINITIONS[2].enemies[0],...STAGE_DEFINITIONS[3].enemies]){clean();const e=combat.spawnEnemy(1,spec);hit(e);const c=coins[0];combat.waves.advance();const clone=combat.spawnRevenge(c.revenge);check(clone.type===e.type&&clone.hp===e.config.health&&JSON.stringify(clone.config)===JSON.stringify(e.config),'Archetype snapshot');}
  // All three colors use identical collision and movement calculations.

@@ -8,6 +8,7 @@ const LOOT_TYPES = {
   chest: { name:'Treasure Chest', width:34, height:28, mass:5, friction:1.4, shape:'circle', color:'#e6bc60' },
   key: { name:'Rusty Key', width:20, height:30, mass:1.1, friction:1, shape:'circle', color:'#daab79' }
 };
+const STARTING_LOOT = []; // Coin-only tables for the current testing setup.
 const LOOT_SCHEDULE = {1:'potion',3:'sword',5:'armor',7:'chest',};
 const ENEMY_LOOT_CHANCES=[{type:'potion',chance:.04},{type:'armor',chance:.03},{type:'sword',chance:.02},{type:'chest',chance:.01}];
 const CHEST_REWARDS = [{type:'potion'},{type:'sword'},{type:'armor'},{type:'coins',amount:5}];
@@ -27,7 +28,7 @@ class PhysicalLoot {
   }
   seedStarting(){
     this.pending=this.pending.filter(spec=>!spec.starting);
-    const types=['potion','sword','armor','chest'];
+    const types=[...STARTING_LOOT];
     for(let i=types.length-1;i>0;i--){const j=Math.floor(this.random()*(i+1));[types[i],types[j]]=[types[j],types[i]];}
     types.forEach(type=>this.pending.push({id:'loot-'+this.nextId++,type,starting:true}));
   }

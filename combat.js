@@ -117,7 +117,8 @@ class DungeonCombat {
     this.health.reset(); this.enemies = []; this.effects = []; this.waves.reset();
     k.x = (k.left + k.right) / 2; k.y = k.floor; k.vy = 0; k.facing = 1;
     k.walk = 0; k.moving = false; k.disabled = false; k.damageAlpha = 1; k.clearInput();
-    this.waves.update(0, (side,spec) => this.spawnEnemy(side,spec)); this.onChange(this);
+    this.waves.update(0, (side,spec) => this.spawnEnemy(side,spec));
+    this.waves.updateBat(0,(side,spec)=>this.spawnEnemy(side,spec),false);this.onChange(this);
   }
   swordBox() {
     const k = this.knight, reach = k.swordReach;
@@ -137,6 +138,7 @@ class DungeonCombat {
     // Revenge enemies are extra threats; they do not consume normal spawn slots.
     while(this.pendingRevengeEnemies.length)this.spawnRevenge(this.pendingRevengeEnemies.shift());
     this.waves.update(dt, (side,spec) => this.spawnEnemy(side,spec),this.enemies.filter(e=>!e.revenge).length);
+    this.waves.updateBat(dt,(side,spec)=>this.spawnEnemy(side,spec),this.enemies.some(e=>e.type==='bat'&&!e.defeated));
     // Every sword collision resolves before any body contact, including
     // when several enemies reach the knight in the same simulation step.
     for (const e of this.enemies) {
@@ -173,7 +175,7 @@ class DungeonCombat {
     if(this.knight.paused)return;
     const k = this.knight;
     if(spec.type==='bat'){
-      const enemy=new Bat(side,{left:k.left,right:k.right,floor:k.floor},{...BAT_CONFIG,...spec.modifiers,...spec.appearance});
+      const enemy=new Bat(side,{left:k.left,right:k.right,floor:k.floor,width:k.canvas.width},{...BAT_CONFIG,...spec.modifiers,...spec.appearance});
       this.enemies.push(enemy);return enemy;
     }
     const radius = this.config.slime.radius;
@@ -190,7 +192,7 @@ class DungeonCombat {
   }
   defeatEnemy(e) {
     if (this.knight.paused || e.defeated || e.hp > 0) return;
-    e.defeated = true;
+    e.defeated = true;this.waves.enemyDefeated(e);
     for (let i = 0; i < 7; i++) this.effects.push({ x: e.x, y: this.knight.floor - e.height - 16, vx: Math.cos(i * 2.4) * 38, vy: -30 - i * 5, life: .4 });
     if(e.type!=='bat'){this.reward(e.x);this.powerups.rollDrop(e.x);}
   }

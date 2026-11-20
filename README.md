@@ -4,6 +4,10 @@ A mobile-friendly top-down coin pusher built with plain HTML, CSS, and JavaScrip
 A separate side-view dungeon walkway sits above the machine.
 No runtime dependencies, external assets, or build step.
 
+Current testing setup: coin-only starting tables (plus the NEXT WAVE token),
+no pre-seeded loot, and a Stage 1 ceiling bat that returns 15 seconds after
+the last bat dies. Slime loot drops remain enabled.
+
 ## Play
 
 Open `index.html` in a modern browser, including Safari on iPhone. Play starts
@@ -18,7 +22,7 @@ is unavailable). Reload, machine reset, and combat restart clear SCORE but retai
 BEST; combat restart preserves the existing stored balance and machine. Stored coins can be spent using DROP or F: one coin per press, aimed by the
 knight’s current horizontal center. Holding does not repeat.
 
-Tap **↺** to refill the machine with 84 coins in partly filled rows with clearance around the initial potion and two small stacks,
+Tap **↺** to refill the machine with 88 coins in partly filled rows, a reserved token pocket and two small stacks,
 clear queued feeds and physical loot, and reset COINS and USED to zero. USED counts coins fed into
 the machine from either source, excluding the starting pile. This machine reset
 does not reset combat. The GAME OVER Restart button resets combat, stages, run upgrades, and SCORE.
@@ -334,19 +338,15 @@ in the air they keep patrolling horizontally, freeze random-pause opportunities,
 and remain vulnerable through height-aware body/sword hitboxes. They land before
 scheduling another hop. Pause freezes wind-up, vertical motion, and hop timers.
 
-Starting potion, sword, armor, and chest are randomly positioned and supported
-on the lower deck with spacing from each other, coins, walls, edge, and the
-reserved progression-token area. Initial coin filling leaves their footprints
-clear. On combat restart, only old starting items are replaced; ordinary coins,
-enemy loot, stored balance, and normal machine motion remain intact. Four fresh
-starting items receive new IDs and random safe placements. If a crowded machine
-cannot fit them immediately, pending items retry every half gameplay second,
-including former positions as safe fallback candidates. No overlaps are forced.
+Starting loot is disabled through the empty `STARTING_LOOT` list. The existing
+safe-placement code remains available for future testing, but no starting item
+footprints are reserved and restart does not seed items. Coins, enemy-dropped
+loot, stored balance, and machine motion retain their usual restart behavior.
 Keys remain disabled. Manual drop cost and cooldown are unchanged.
 
 Run `node tests/hops-loot.cjs` for deterministic loot probabilities and variant
-selection, guaranteed/duplicate rewards, upper entry, randomized supported
-placements, restart quantities, hop wind-up/height/landing, airborne damage,
+selection, guaranteed/duplicate rewards, upper entry, coin-only starting
+tables and restarts, hop wind-up/height/landing, airborne damage,
 and pause across phone and desktop viewports. Existing regression suites remain
 available; real iPhone/Safari testing is manual.
 
@@ -389,9 +389,12 @@ queues, normal spawn slots, and the charcoal face color at desktop/mobile widths
 
 ### Bat enemy
 
-Stage 2 introduces one bat per run alongside the unchanged three-second slime
-schedule. It enters from a random ceiling edge, with no player-position fallback.
-The intro is separate from ordinary spawn counts and does not repeat after death.
+Stage 1 starts with one bat alongside the unchanged three-second slime schedule.
+It crawls into view from beyond a random screen edge, with no player-position
+fallback, and stays on the ceiling until it has entered the battlefield.
+After the last bat dies, a replacement enters after 15 seconds of gameplay time.
+Pause/death freeze this clock; restart clears it and creates one initial bat.
+The testing cycle runs only in Stage 1; living bats persist through transitions.
 Revenge Coins may bring additional bats back; these remain outside normal spawn
 slots, like other revenge enemies.
 
@@ -411,4 +414,4 @@ skip every reward roll, including coins, items, and temporary boosts.
 `node tests/bat.cjs` checks both entry sides, all movement states, repeated edge
 cycles, direction changes, no player reads, equivalent 30/120 Hz flight, smooth
 movement, one-hit kills, no rewards, armor/health, revenge chains and respawns,
-pause/resume, one Stage 2 introduction, and desktop/mobile rendering.
+pause/resume, Stage 1 entry and 15-second respawns, and desktop/mobile rendering.

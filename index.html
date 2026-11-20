@@ -44,13 +44,13 @@ header{margin-bottom:4px}h1{font-size:26px;margin:2px 0}.stats{padding-bottom:6p
 <p class="hint">Knight: ← → / A D · Jump: Space / ↑ / W<br>Slime defeats feed the machine at their position. Push NEXT WAVE to advance.</p>
 <footer><span>NO TOKENS REQUIRED</span><span>JUST ONE MORE DROP ↗</span></footer>
 </main>
-<script src="loot.js?v=hops-loot-1"></script>
+<script src="loot.js?v=coin-start-2"></script>
 <script src="knight.js?v=boosts-1"></script>
-<script src="bat.js?v=bat-1"></script>
-<script src="waves.js?v=bat-1"></script>
+<script src="bat.js?v=bat-test-2"></script>
+<script src="waves.js?v=bat-test-2"></script>
 <script src="progression.js?v=run-loot-1"></script>
 <script src="powerups.js?v=single-boost-1"></script>
-<script src="combat.js?v=bat-1"></script>
+<script src="combat.js?v=bat-test-2"></script>
 <script>
 'use strict';
 const canvas = document.getElementById('game');
@@ -153,7 +153,7 @@ function reset() {
       const offset = row % 2 ? spacing / 2 : 0;
       let column=0;
       for (let x = LEFT + R + offset; x <= RIGHT - R; x += spacing) {
-        const leaveLootPocket=z===0 && (Math.hypot(x-230,y-(EDGE-24))<40 || Math.hypot(x-110,y-340)<36);
+        const leaveLootPocket=z===0 && Math.hypot(x-110,y-340)<36;
         if((row+column++)%4!==0 && !leaveLootPocket && !startingPlans.some(p=>Math.hypot(p.x-x,p.y-y)<p.radius+R+1))coins.push(coin(x, y, z));
       }
     }
@@ -203,7 +203,7 @@ function drop() {
 }
 function planStartingItems(){
  const plans=[];
- for(const type of ['potion','sword','armor','chest']){
+ for(const type of STARTING_LOOT){
   const d=LOOT_TYPES[type],radius=Math.hypot(d.width,d.height)/2;
   for(let i=0;i<500;i++){
    const x=LEFT+radius+2+Math.random()*(RIGHT-LEFT-2*radius-4),y=290+radius+Math.random()*(EDGE-2*radius-302);

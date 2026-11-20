@@ -7,13 +7,13 @@ console.log(await p.evaluate(()=>{
  for(let i=0;i<hz*40;i++){
   // Deliberately hostile proxy: accessing player coordinates would fail.
   b.update(1/hz,new Proxy({}, {get(){throw Error('Bat read player');}}));states.add(b.state);
-  check(b.x>=b.left-1e-7&&b.x<=b.right+1e-7&&b.y>=b.ceiling-1e-7&&b.y<=b.floor-BAT_CONFIG.minHeight+1e-7,'Flight bounds');
+  check((b.entering?b.x>=b.entryLeft&&b.x<=b.entryRight:b.x>=b.left-1e-7&&b.x<=b.right+1e-7)&&b.y>=b.ceiling-1e-7&&b.y<=b.floor-BAT_CONFIG.minHeight+1e-7,'Flight bounds');
   check(Math.hypot(b.x-last.x,b.y-last.y)<240/hz,'Flight snapped');
   if(b.state==='SWOOP'){dirs.add(b.moveDirection);low=Math.max(low,b.y);const dy=b.y-last.y;if(lastDY>0&&dy<0)turn=true;lastDY=dy;}
   last={x:b.x,y:b.y};
  }
  check(states.size===5&&states.has('CEILING_CRAWL')&&turn&&low>95,'Full readable cycle');return {x:b.x,y:b.y,state:b.state,dirs:[...dirs]};};
- for(const side of [-1,1]){const b=new Bat(side,bounds);check(b.state==='CEILING_CRAWL'&&b.y===b.ceiling&&b.x===(side>0?b.right:b.left)&&!b.canContact,'Ceiling side spawn');const before=b.x;b.update(.1);check(side>0?b.x<before:b.x>before,'Crawl inward');trace(120,side);}
+ for(const side of [-1,1]){const b=new Bat(side,bounds);check(b.state==='CEILING_CRAWL'&&b.y===b.ceiling&&b.x===(side>0?b.entryRight:b.entryLeft)&&!b.canContact,'Ceiling side spawn');const before=b.x;b.update(.1);check(side>0?b.x<before:b.x>before,'Crawl inward');trace(120,side);}
  const slow=trace(30,-1),fast=trace(120,-1);check(Math.abs(slow.x-fast.x)<1e-6&&Math.abs(slow.y-fast.y)<1e-6&&slow.state===fast.state,'Frame-rate flight');
  let counter=0;const both=trace(120,-1,()=>counter++%2?.9:.1);check(both.dirs.length===2,'Swoop direction variation');
  // Spawn entry ignores the knight even when he stands at that edge.
@@ -31,9 +31,17 @@ console.log(await p.evaluate(()=>{
  b=combat.enemies[0];check(b instanceof Bat&&b.revenge&&b.hp===1&&b.state==='CEILING_CRAWL'&&b.y===b.ceiling,'Revenge bat entry');check(score===balance&&runScore===point&&JSON.stringify(combat.waves)===clock,'Revenge rewards/stage');
  b.x=dungeon.x-5;b.y=dungeon.floor-28;b.enter('FLUTTER',1);combat.health.invulnerable=0;combat.update(STEP);check(combat.health.hearts===2&&coins.some(c=>c.revenge?.type==='bat'),'Bat revenge chain/contact damage');
  setPaused(true);const snapshot=JSON.stringify(b);combat.update(100);frame(9999999);check(JSON.stringify(b)===snapshot,'Pause flight');setPaused(false);frame(99999999);check(JSON.stringify(b)===snapshot,'Resume catchup');
- combat.restart();check(!combat.enemies.some(e=>e.type==='bat'),'Stage 1 bat');combat.waves.advance();combat.health.invulnerable=100;combat.update(STEP);check(combat.enemies.filter(e=>e.type==='bat').length===1,'Stage 2 intro');
- for(let i=0;i<2400;i++)combat.update(STEP);check(combat.enemies.filter(e=>e.type==='bat').length<=1,'Repeated regular bat');
- combat.enemies=[];combat.update(STEP);check(!combat.enemies.some(e=>e.type==='bat'),'Intro bat repeated after death');
+ combat.restart();check(combat.enemies.filter(e=>e.type==='bat').length===1,'Stage 1 bat');
+ check(!coins.some(c=>c.loot)&&!loot.pending.some(c=>c.starting),'Starting loot');
+ const firstBat=combat.enemies.find(e=>e.type==='bat');firstBat.hp=0;combat.defeatEnemy(firstBat);combat.defeatEnemy(firstBat);combat.enemies=combat.enemies.filter(e=>!e.defeated);
+ check(combat.waves.batTimer===15,'Death reset countdown');
+ const spawn=(side,spec)=>combat.spawnEnemy(side,spec);combat.waves.updateBat(14.99,spawn,false);check(!combat.enemies.some(e=>e.type==='bat'),'Early bat');
+ setPaused(true);const countdown=combat.waves.batTimer;combat.update(100);check(combat.waves.batTimer===countdown,'Paused respawn countdown');setPaused(false);
+ combat.waves.updateBat(.01,spawn,false);check(combat.enemies.filter(e=>e.type==='bat').length===1,'15 second replacement');
+ combat.waves.updateBat(100,spawn,true);check(combat.enemies.filter(e=>e.type==='bat').length===1,'Duplicate bat');
+ const survivor=combat.enemies.find(e=>e.type==='bat');combat.waves.advance();combat.update(STEP);check(combat.enemies.includes(survivor),'Stage transition removed bat');
+ combat.enemies=[];combat.waves.updateBat(100,spawn,false);check(!combat.enemies.length,'Later-stage bat testing');
+ document.getElementById('restart').click();check(combat.waves.wave===1&&combat.enemies.filter(e=>e.type==='bat').length===1&&!coins.some(c=>c.loot),'Restart setup');
  // Mobile-size view shows the three wing poses and ceiling crawler.
  combat.enemies=[-1,1].map(side=>new Bat(side,bounds));const flutter=new Bat(-1,bounds);flutter.x=230;flutter.y=60;flutter.enter('FLUTTER',1);combat.enemies.push(flutter);dungeon.draw();draw();
  return {width:innerWidth,passed:true};
