@@ -415,3 +415,17 @@ skip every reward roll, including coins, items, and temporary boosts.
 cycles, direction changes, no player reads, equivalent 30/120 Hz flight, smooth
 movement, one-hit kills, no rewards, armor/health, revenge chains and respawns,
 pause/resume, Stage 1 entry and 15-second respawns, and desktop/mobile rendering.
+
+### Random slime entry sides
+
+Each scheduled slime chooses left/right randomly, independent of the knight's
+position. The factory no longer redirects a chosen side to avoid the player.
+`SLIME_SPAWN_CONFIG.maxSameSide` is 4: after four actual slime spawns from the same
+edge, another request for that edge switches to the opposite edge. Later choices
+are random again. The streak persists across stages, resets on restart, includes
+revenge slimes, and ignores bats and paused/blocked attempts. Spawn timing and
+slime movement remain unchanged.
+
+`node tests/spawn-sides.cjs` verifies both forced-switch directions, identical
+entry positions with the player at either edge/center, random multi-spawn runs,
+roughly balanced distribution, stage persistence, restart, pause, bats and revenge.

@@ -4,6 +4,7 @@ const COMBAT_CONFIG = {
   player: { hearts: 3, invulnerability: 1, knockbackSpeed: 105, knockbackTime: .16 },
   slime: { health: 2, damage: 1, speed: 77.5, radius: 15, height: 32, recoilSpeed: 160, recoilTime: .22 },
 };
+const SLIME_SPAWN_CONFIG={maxSameSide:4};
 const overlaps = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
 
 class PlayerHealth {
@@ -114,6 +115,7 @@ class DungeonCombat {
     this.runLoot.reset();
     this.powerups.normalReach=this.originalSwordReach;
     this.powerups.reset();
+    this.slimeSpawnSide=0;this.slimeSpawnStreak=0;
     this.health.reset(); this.enemies = []; this.effects = []; this.waves.reset();
     k.x = (k.left + k.right) / 2; k.y = k.floor; k.vy = 0; k.facing = 1;
     k.walk = 0; k.moving = false; k.disabled = false; k.damageAlpha = 1; k.clearInput();
@@ -179,8 +181,13 @@ class DungeonCombat {
       this.enemies.push(enemy);return enemy;
     }
     const radius = this.config.slime.radius;
-    let x = side > 0 ? k.right - radius : k.left + radius;
-    if (Math.abs(x - k.x) < 110) x = x > (k.left + k.right) / 2 ? k.left + radius : k.right - radius;
+    // Apply the run limit to actual slime spawns, including revenge returns.
+    // Bat entries and blocked/paused spawn attempts do not affect this streak.
+    side=side>0?1:-1;
+    if(side===this.slimeSpawnSide&&this.slimeSpawnStreak>=SLIME_SPAWN_CONFIG.maxSameSide)side=-side;
+    this.slimeSpawnStreak=side===this.slimeSpawnSide?this.slimeSpawnStreak+1:1;
+    this.slimeSpawnSide=side;
+    const x = side > 0 ? k.right - radius : k.left + radius;
     const config={...this.config.slime,...spec.modifiers,...spec.appearance};
     const enemy=new Slime(x, config, (config.movement==='patrol'?(x<(k.left+k.right)/2?1:-1):Math.sign(k.x-x)));
     enemy.type=spec.type;this.enemies.push(enemy);return enemy;
